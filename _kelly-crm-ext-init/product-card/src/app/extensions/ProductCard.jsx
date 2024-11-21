@@ -47,14 +47,14 @@ const SelectionGroup = ({ allBusinessUnits, allMarketCategories, allProducts }) 
   </Flex>
 );
 
-const InputGroup = () => (
+const InputGroup = ({ onInputChange }) => (
   <Flex direction="row" gap={FLEX_GAP}>
     <Flex direction="column" gap={FLEX_GAP}>
       <Input label="Annual Revenue Amount" />
-      <Input label="Current Year Amount Override" />
-      <Input label="GP Fee Percent" />
-      <Input label="Current Year GP Override" />
-      <Input label="Markup Percent" />
+      <Input label="Current Year Amount Override" onChange={(e) => onInputChange('currentYearOverride', e.target.value)} />
+      <Input label="GP Fee Percent" onChange={(e) => onInputChange('gpFeePercent', e.target.value)} />
+      <Input label="Current Year GP Override" onChange={(e) => onInputChange('currentYearGpOverride', e.target.value)} />
+      <Input label="Markup Percent" onChange={(e) => onInputChange('markupPercent', e.target.value)} />
     </Flex>
     <Flex direction="column" gap={FLEX_GAP} justify="center">
       <CalculatedFields />
@@ -62,16 +62,22 @@ const InputGroup = () => (
   </Flex>
 );
 
-const CalculatedFields = () => (
-  <Tile>
-    <Text format={{ fontWeight: 'bold' }} variant="heading">
-      Calculated Fields:
-    </Text>
-    <CalculatedField input={{ label: 'Initial Year Amount', value: '100000' }} />
-    <CalculatedField input={{ label: 'GP Fee Amount', value: '10000' }} />
-    <CalculatedField input={{ label: 'Current Year GP Fee', value: '10000' }} />
-  </Tile>
-);
+const CalculatedFields = ({ annualRevenue = 0, gpFeePercent = 0 }) => {
+  const initialYearAmount = (365.25 * annualRevenue).toFixed(2);
+  const gpFee = (annualRevenue * (gpFeePercent / 100)).toFixed(2);
+  const currentYearGpFee = (initialYearAmount * (gpFeePercent / 100)).toFixed(2);
+
+  return (
+    <Tile>
+      <Text format={{ fontWeight: 'bold' }} variant="heading">
+        Calculated Fields:
+      </Text>
+      <CalculatedField input={{ label: 'Initial Year Amount', value: initialYearAmount || '0.00' }} />
+      <CalculatedField input={{ label: 'GP Fee &', value: gpFee || '0.00' }} />
+      <CalculatedField input={{ label: 'Current Year GP Fee', value: currentYearGpFee || '0.00' }} />
+    </Tile>
+  );
+};
 
 const Drawers = () => (
   <Flex direction="column" gap={'flush'}>
@@ -87,7 +93,7 @@ const Drawers = () => (
   </Flex>
 );
 
-const ProductForm = ({ allBusinessUnits, allMarketCategories, allProducts }) => (
+const ProductForm = ({ allBusinessUnits, allMarketCategories, allProducts, onInputChange, inputs }) => (
   <Flex direction="column" gap={'flush'} flex={'auto'}>
     <Flex direction="row">
       <Text variant="heading">Select a Product to begin</Text>
@@ -96,7 +102,7 @@ const ProductForm = ({ allBusinessUnits, allMarketCategories, allProducts }) => 
     <Flex direction="column" gap={FLEX_GAP}>
       <SelectionGroup allBusinessUnits={allBusinessUnits} allMarketCategories={allMarketCategories} allProducts={allProducts} />
       <Divider distance="small" />
-      <InputGroup />
+      <InputGroup onInputChange={onInputChange} inputs={inputs} />
       <Divider distance="large" />
     </Flex>
     <Flex align="end" flex={'2'} direction="row" justify="center">
@@ -112,6 +118,21 @@ const ProductCard = ({ runServerless, context, refreshObjectProperties, actions 
   const [allProducts, setAllProducts] = useState(null);
   const [allBusinessUnits, setAllBusinessUnits] = useState(null);
   const [allMarketCategories, setAllMarketCategories] = useState(null);
+
+  const [inputs, setInputs] = useState({
+    annualRevenue: 0,
+    currentYearOverride: 0,
+    gpFeePercent: 0,
+    currentYearGpOverride: 0,
+    markupPercent: 0,
+  });
+
+  const handleInputChange = (name, value) => {
+    setInputs((prevInputs) => ({
+      ...prevInputs,
+      [name]: parseFloat(value) || 0,
+    }));
+  };
 
   const getData = () => {
     return runServerless({
@@ -152,7 +173,13 @@ const ProductCard = ({ runServerless, context, refreshObjectProperties, actions 
     <Flex direction="column" gap={FLEX_GAP} style={{ padding: '0px', width: '100%' }}>
       <Drawers />
       <Divider distance="small" />
-      <ProductForm allBusinessUnits={allBusinessUnits} allMarketCategories={allMarketCategories} allProducts={allProducts} />
+      <ProductForm
+        allBusinessUnits={allBusinessUnits}
+        allMarketCategories={allMarketCategories}
+        allProducts={allProducts}
+        onInputChange={handleInputChange}
+        inputs={inputs}
+      />
     </Flex>
   );
 };
