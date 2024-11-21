@@ -1,0 +1,10 @@
+{
+    "name": "hubspot-product-card-function",
+    "version": "0.1.0",
+    "author": "New Breed",
+    "license": "MIT",
+    "dependencies": {
+        "@hubspot/api-client": "^9.1.1",
+        "axios": "^0.27.2"
+    }
+}

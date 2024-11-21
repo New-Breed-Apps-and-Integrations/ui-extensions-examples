@@ -1,0 +1,12 @@
+{
+  "type": "crm-card",
+  "data": {
+    "title": "DEV | Product Card Title",
+    "uid": "product_card",
+    "location": "crm.record.tab",
+    "module": {
+      "file": "ProductCard.jsx"
+    },
+    "objectTypes": [{ "name": "deals" }]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Product card app",
+  "description": "Product card app",
+  "uid": "product_card_app",
+  "scopes": [
+    "crm.objects.deals.read",
+    "business_units_view.read",
+    "crm.objects.deals.write",
+    "e-commerce",
+    "crm.objects.quotes.read",
+    "crm.objects.quotes.write"
+  ],
+  "public": false,
+  "extensions": {
+    "crm": {
+      "cards": [
+        {
+          "file": "extensions/product-card.json"
+        }
+      ]
+    }
+  }
+}
