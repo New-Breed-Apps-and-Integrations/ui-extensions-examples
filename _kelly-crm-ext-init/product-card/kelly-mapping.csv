@@ -1,0 +1,12 @@
+object, Label in the UI, HS property internal name, HS prop label, HS prop type, editable?,required?,default value, formula and notes
+deal, Product Name, name, Product Name, text, false, false, , , 
+lineItem, Annual Revenue Amount, annual_revenue_amount, Annual Revenue Amount, number ($), false, false, $0, this is the dollar value associated to the product
+lineItem, CY Amount Override, current_year_amount_override, Current Year Amount Override, number ($), true, false, $0, if entered this value will re-calculate the value in the "Initial Year GP Fee" field based on the deal start date.
+lineItem, GP Fee %, gp_fee_percent, GP Fee %, number (%), true, false, 0%, 
+lineItem, GP Fee $, gp_fee__, GP Fee $, number ($), false, false, $0, 
+lineItem, CY GP Override, current_year_gp_override, Current Year GP Override, number ($), true, false, $0, 
+lineItem, Markup %, markup_percent, Mark Up %, number (%), true, false, 0%, increases the total for that individual product. Basically the reverse of a discount and it applies at the product level
+lineItem, Initial Year GP Fee, can't find in HS, n/a, n/a , false, false, $0, [initial year amount] x [GP Fee %]. this is a sum of the GP fee prorated for the time remaining in the current year
+lineItem, Initial Year Amount, initial_year_amount, Initial Year Amount, number ($), false, false, $0, [Annual Revenue Amount] x [Dec 31 current year] - [Deal Start Date]. this is a prorated dollar value based on the deal start date and the remaining time left in the year
+lineItem, Total $, amount?, , , , ,
+?,Country, ?, ?, ?, ?, false, none, the user has the ability to specify a country

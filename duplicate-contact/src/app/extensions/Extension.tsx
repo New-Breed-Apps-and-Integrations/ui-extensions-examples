@@ -46,6 +46,9 @@ const Extension = ({ runServerless, context }: ExtensionProps) => {
   const [email, setEmail] = useState('');
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
+  const [selectedBusinessUnit, setSelectedBusinessUnit] = useState('');
+  const [selectedMarketCategory, setSelectedMarketCategory] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState('');
 
   useEffect(() => {
     // Request association data from serverless function
@@ -69,15 +72,19 @@ const Extension = ({ runServerless, context }: ExtensionProps) => {
     runServerless({
       name: 'duplicateContact',
       propertiesToSend: ['hs_object_id'],
-      parameters: { associations, email }, // Send current associations and email as parameters
+      parameters: {
+        associations,
+        email,
+        businessUnit: selectedBusinessUnit,
+        marketCategory: selectedMarketCategory,
+        product: selectedProduct,
+      }, // Send current associations, email, and selected values as parameters
     }).then((resp) => {
       setLoading(false);
       if (resp.status === 'SUCCESS') {
         const contact = resp.response;
         // Set the URL to the newly created contact
-        setUrl(
-          `https://app.hubspot.com/contacts/${context.portal.id}/contact/${contact.id}`
-        );
+        setUrl(`https://app.hubspot.com/contacts/${context.portal.id}/contact/${contact.id}`);
       } else {
         setError(resp.message); // Set error message from response
       }
@@ -99,36 +106,17 @@ const Extension = ({ runServerless, context }: ExtensionProps) => {
     return (
       <>
         <Flex direction={'column'} gap={'lg'}>
-          <Text variant="microcopy">
-            Duplicate a contact along with some of its properties and associated deals and companies.
-          </Text>
+          <Text variant="microcopy">Duplicate a contact along with some of its properties and associated deals and companies.</Text>
           <Flex direction={'column'} gap={'sm'}>
-            <Text format={{ fontWeight: 'bold' }}>
-              Enter an email for the new contact:
-            </Text>
-            <Input
-              label=""
-              name="email"
-              onInput={(v) => setEmail(v)}
-              required={true}
-            />
-            <Text format={{ fontWeight: 'bold' }}>
-              Number of associations to be copied:
-            </Text>
+            <Text format={{ fontWeight: 'bold' }}>Enter an email for the new contact:</Text>
+            <Input label="" name="email" onInput={(v) => setEmail(v)} required={true} />
+            <Text format={{ fontWeight: 'bold' }}>Number of associations to be copied:</Text>
             <DescriptionList direction="row">
-              <DescriptionListItem label={'Deals'}>
-                {associations.deal_collection__contact_to_deal.total}
-              </DescriptionListItem>
-              <DescriptionListItem label={'Companies'}>
-                {associations.company_collection__primary.total}
-              </DescriptionListItem>
+              <DescriptionListItem label={'Deals'}>{associations.deal_collection__contact_to_deal.total}</DescriptionListItem>
+              <DescriptionListItem label={'Companies'}>{associations.company_collection__primary.total}</DescriptionListItem>
             </DescriptionList>
             <Flex direction={'row'} justify={'end'}>
-              <Button
-                onClick={duplicateContact}
-                disabled={email === ''}
-                variant="primary"
-              >
+              <Button onClick={duplicateContact} disabled={email === ''} variant="primary">
                 Duplicate Contact
               </Button>
             </Flex>

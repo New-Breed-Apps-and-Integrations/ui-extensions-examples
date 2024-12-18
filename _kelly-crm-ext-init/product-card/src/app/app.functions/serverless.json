@@ -1,8 +1,16 @@
 {
-    "appFunctions": {
-        "getData": {
-            "file": "getData.js",
-            "secrets": []
-        }
+  "appFunctions": {
+    "getData": {
+      "file": "getData.js",
+      "secrets": []
+    },
+    "upsertLineItem": {
+      "file": "upsertLineItem.js",
+      "secrets": []
+    },
+    "clearLineItems": {
+      "file": "clearLineItems.js",
+      "secrets": []
     }
+  }
 }
