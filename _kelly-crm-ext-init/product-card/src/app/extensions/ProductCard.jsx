@@ -19,6 +19,12 @@ import React from 'react';
 import { RevenueAndCalculatedFields } from './components/RevenueAndCalculatedFields';
 import { SelectionGroup } from './components/SelectionGroup';
 
+// [x] Rolling up the line item total to the deal amount
+// [ ] Ensure that the currency symbol on the line items match the deal
+// [x] Remove the extra headers on the collapsed line items
+// [ ] Ensure that the filters (business units and service category) are working correctly
+// [x] Do we have the fields in the right order with the right naming conventions?
+
 // import { Products } from './components/Products';
 // import { BusinessUnits } from './components/BusinessUnits';
 // import { MarketCategory } from './components/MarketCategory';
@@ -133,7 +139,7 @@ const ProductCard = ({ runFunction, context, actions }) => {
         // console.log(`response: ${JSON.stringify(response, null, 2)}`);
 
         setLineItems(response.lineItems);
-        // console.log(`response.lineItems: ${JSON.stringify(response.lineItems, null, 2)}`);
+        console.log(`response.lineItems: ${JSON.stringify(response.lineItems, null, 2)}`);
         setDealStartDate(response.dealStartDate);
         setAllProducts(response.allProducts);
         // console.log(`response.allProducts: ${JSON.stringify(response.allProducts, null, 2)}`);
@@ -208,8 +214,6 @@ const Drawers = ({
 
   return (
     <>
-      {/* <Button>**debug** current line_item count: {lineItems.length} **debug**</Button> */}
-      <Button onClick={clearLineItems}>Clear Line Items</Button>
       <Flex direction="column" gap={'flush'}>
         {lineItems.map((item, index) => (
           <LineItemWithForm
@@ -236,7 +240,7 @@ const Drawers = ({
         ))}
         <Flex direction="column" gap={'flush'}>
           <Button onClick={() => toggleOpen('add')}>
-            {openIndex === 'add' ? 'Cancel New Line Item' : 'Add a Line Item'}
+            {openIndex === 'add' ? 'Cancel New Line Item' : 'Add a New Line Item'}
           </Button>
           {openIndex === 'add' && (
             <Flex direction="column" gap={'flush'}>
@@ -259,6 +263,12 @@ const Drawers = ({
             </Flex>
           )}
         </Flex>
+        {/* <Button>**debug** current line_item count: {lineItems.length} **debug**</Button> */}
+        <Divider distance="large" />
+
+        <Button variant="destructive" onClick={clearLineItems}>
+          Delete All Line Items
+        </Button>
       </Flex>
     </>
   );
@@ -385,6 +395,7 @@ const LineItemWithForm = ({
         businessUnit: item.business_unit || '',
         serviceCategory: item.service_category || '',
         product: item.product_id || '',
+        country: item.country || '',
       });
 
       // Sync dropdown state
@@ -425,17 +436,13 @@ const LineItemWithForm = ({
   );
 };
 
+// Product Name | Annual Revenue Amount | GP Fee Percent | GP Fee Amount
+
 const lineItemDataPoints = [
   { label: 'Product Name', hs_internal_name: 'name' },
   { label: 'Annual Revenue Amount', hs_internal_name: 'annual_revenue_amount' },
-  { label: 'Initial Year Amount Override', hs_internal_name: 'initial_year_amount_override' },
-  { label: 'GP Fee %', hs_internal_name: 'gp_fee_percent' },
-  { label: 'GP Fee $', hs_internal_name: 'gp_fee__' },
-  { label: 'Initial Year GP Override', hs_internal_name: 'initial_year_gp_override' },
-  { label: 'Markup %', hs_internal_name: 'markup_percent' },
-  { label: 'Initial Year Amount', hs_internal_name: 'initial_year_amount' },
-  { label: 'Initial Year GP Fee', hs_internal_name: 'initial_year_gp_fee' },
-  { label: 'Country', hs_internal_name: 'country' },
+  { label: 'GP Fee Percent', hs_internal_name: 'gp_fee_percent' },
+  { label: 'GP Fee Amount', hs_internal_name: 'gp_fee__' },
 ];
 
 const LineItemRowContents = ({ dataPoint, item }) => (
@@ -450,7 +457,7 @@ const LineItemRowContents = ({ dataPoint, item }) => (
 );
 
 const LineItem = ({ item }) => (
-  <Tile onClick={() => console.log('clicked')} compact={true}>
+  <Tile onClick={() => console.log('clicked')} flush={false} compact={true}>
     <Flex direction="row" gap="xs" wrap="nowrap">
       {lineItemDataPoints.map((dataPoint) => (
         <LineItemRowContents dataPoint={dataPoint} item={item} />

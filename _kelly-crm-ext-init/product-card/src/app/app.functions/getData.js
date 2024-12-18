@@ -1,5 +1,5 @@
 const axios = require('axios');
-
+const { getAllLineItems } = require('./shared');
 // Entry function of this module, it creates a quote together with line items
 exports.main = async (context = {}) => {
   const ACCESS_TOKEN = process.env['PRIVATE_APP_ACCESS_TOKEN'];
@@ -35,47 +35,6 @@ async function getDealStartDate(headers, dealId) {
   const url = `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=start_date__c`;
   const response = await axios.get(url, { headers });
   return response?.data?.properties?.start_date__c;
-}
-
-async function getAllLineItems(headers, dealId) {
-  const url = `https://api.hubapi.com/crm/v4/objects/deals/${dealId}/associations/line_items`;
-  const response = await axios.get(url, { headers });
-  const lineItemIds = response.data.results.map((result) => result.toObjectId);
-  if (lineItemIds.length > 0) {
-    const lineItems = await getFullLineItems(headers, lineItemIds);
-    return lineItems.map(flattenHubspotObject);
-  }
-  return [];
-}
-
-async function getFullLineItems(headers, lineItemIds) {
-  const url = `https://api.hubapi.com/crm/v3/objects/line_items/batch/read?archived=false`;
-
-  const inputs = lineItemIds.map((id) => ({ id }));
-
-  const properties = [
-    'name',
-    'annual_revenue_amount',
-    'initial_year_amount_override',
-    'gp_fee_percent',
-    'gp_fee__',
-    'initial_year_gp_override',
-    'markup_percent',
-    'initial_year_amount',
-    'initial_year_gp_fee',
-    'hs_product_id',
-    'amount',
-    'hs_sku',
-    'currency',
-    'country',
-  ];
-  const data = {
-    inputs,
-    properties,
-  };
-
-  const response = await axios.post(url, data, { headers });
-  return response.data.results;
 }
 
 async function getAllServiceCategories(headers) {
@@ -161,15 +120,4 @@ async function getAllBusinessUnits(headers, userId) {
   const businessUnits = response.data.results;
   // businessUnits.push({ id: 'All Units', name: 'All Units', logoMetadata: null });
   return businessUnits;
-}
-
-function flattenHubspotObject(obj) {
-  if (!obj || typeof obj !== 'object' || !obj.properties) {
-    return obj;
-  }
-
-  return {
-    ...obj,
-    ...obj.properties,
-  };
 }

@@ -1,5 +1,5 @@
 const axios = require('axios');
-
+const { getAllLineItems } = require('./shared');
 // Entry function of this module, it creates a quote together with line items
 exports.main = async (context = {}) => {
   const ACCESS_TOKEN = process.env['PRIVATE_APP_ACCESS_TOKEN'];
@@ -44,61 +44,9 @@ exports.main = async (context = {}) => {
     return { error: error.message };
   }
 };
-
-function flattenHubspotObject(obj) {
-  if (!obj || typeof obj !== 'object' || !obj.properties) {
-    return obj;
-  }
-
-  return {
-    ...obj,
-    ...obj.properties,
-  };
-}
-
-async function getFullLineItems(headers, lineItemIds) {
-  const url = `https://api.hubapi.com/crm/v3/objects/line_items/batch/read?archived=false`;
-
-  const inputs = lineItemIds.map((id) => ({ id }));
-
-  const properties = [
-    'name',
-    'annual_revenue_amount',
-    'initial_year_amount_override',
-    'gp_fee_percent',
-    'gp_fee__',
-    'initial_year_gp_override',
-    'markup_percent',
-    'initial_year_amount',
-    'initial_year_gp_fee',
-    'hs_product_id',
-    'amount',
-    'hs_sku',
-    'currency',
-    'country',
-  ];
-  const data = {
-    inputs,
-    properties,
-  };
-
-  const response = await axios.post(url, data, { headers });
-  return response.data.results;
-}
-async function getAllLineItems(headers, dealId) {
-  const url = `https://api.hubapi.com/crm/v4/objects/deals/${dealId}/associations/line_items`;
-  const response = await axios.get(url, { headers });
-  const lineItemIds = response.data.results.map((result) => result.toObjectId);
-  if (lineItemIds.length > 0) {
-    const lineItems = await getFullLineItems(headers, lineItemIds);
-    return lineItems.map(flattenHubspotObject);
-  }
-  return [];
-}
-
 async function updateDealTotalAmount({ headers, dealId }) {
   const lineItems = await getAllLineItems(headers, dealId);
-  const totalAmount = lineItems.reduce((sum, item) => sum + item.annual_revenue_amount, 0);
+  const totalAmount = lineItems.reduce((sum, item) => Number(sum) + Number(item.annual_revenue_amount), 0);
   const url = `https://api.hubapi.com/crm/v3/objects/deals/${dealId}`;
   const data = {
     properties: { amount: totalAmount },
