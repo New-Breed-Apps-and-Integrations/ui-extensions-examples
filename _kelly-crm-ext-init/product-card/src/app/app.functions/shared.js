@@ -40,6 +40,7 @@ async function getFullLineItems(headers, lineItemIds) {
     'hs_sku',
     'currency',
     'country',
+    'gp_fee__',
   ];
   const data = {
     inputs,

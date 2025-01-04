@@ -8,65 +8,83 @@ exports.main = async (context = {}) => {
     Authorization: `Bearer ${ACCESS_TOKEN}`,
   };
 
-  // let context = {
-  //   propertiesToSend: {
-  //     hs_object_id: '29766991696',
-  //   },
-  //   parameters: {
-  //     formData: {
-  //       annualRevenue: 3100000,
-  //       currentYearOverride: 203000,
-  //       gpFeePercent: 33,
-  //     },
-  //   },
-  // };
-
   try {
-    console.log(`\n\nFRESH Line Item REQUEST!\n\n`);
+    console.log('\nFRESH Line Item REQUEST!\n');
     console.log(`context: ${JSON.stringify(context, null, 2)}`);
 
     const { hs_object_id: dealId } = context.propertiesToSend;
     const { formData } = context.parameters;
+    console.log(`formData: ${JSON.stringify(formData, null, 2)}`);
 
-    let newLineItem;
-    if (formData.lineItemId) {
-      newLineItem = await updateALineItem({ headers, dealId, formData });
-    } else {
-      newLineItem = await insertALineItem({ headers, dealId, formData });
-    }
+    const lineItemHsId = formData.hsObjectId;
+    const newLineItem = lineItemHsId
+      ? await updateLineItem({ headers, lineItemHsId, formData })
+      : await insertLineItem({ headers, dealId, formData });
 
-    await updateDealTotalAmount({ headers, dealId });
+    await updateDealProperties({ headers, dealId });
 
     return { newLineItem };
   } catch (error) {
+    console.log('we have an error');
     console.error(error.message);
-    console.log(JSON.stringify(error.response.data, null, 2));
-    return { error: error.message };
+    const msg = error?.response?.data?.message || error?.message;
+    console.log(JSON.stringify(msg, null, 2));
+    return { error: msg };
   }
 };
-async function updateDealTotalAmount({ headers, dealId }) {
+
+async function updateDealProperties({ headers, dealId }) {
   const lineItems = await getAllLineItems(headers, dealId);
   const totalAmount = lineItems.reduce((sum, item) => Number(sum) + Number(item.annual_revenue_amount), 0);
+  const totalGpFee = lineItems.reduce((sum, item) => Number(sum) + Number(item.gp_fee__), 0);
+  const dealInitialYearAmount = lineItems.reduce(
+    (sum, item) => Number(sum) + Number(item.initial_year_amount_override || item.initial_year_amount),
+    0
+  );
+  const dealInitialYearGpFee = lineItems.reduce(
+    (sum, item) => Number(sum) + Number(item.initial_year_gp_override || item.initial_year_gp_fee),
+    0
+  );
   const url = `https://api.hubapi.com/crm/v3/objects/deals/${dealId}`;
   const data = {
-    properties: { amount: totalAmount },
-  };
-  const response = await axios.patch(url, data, { headers });
-  return response.data;
-}
-
-async function updateALineItem({ headers, dealId, formData }) {
-  const url = `https://api.hubapi.com/crm/v3/objects/line_items/${formData.lineItemId}`;
-  const data = {
     properties: {
-      ...formData,
+      amount: totalAmount,
+      gp_fee__c: totalGpFee,
+      gp___fee__: totalGpFee / totalAmount,
+      first_year_amount: dealInitialYearAmount,
+      first_year_gp_fee: dealInitialYearGpFee,
     },
   };
   const response = await axios.patch(url, data, { headers });
   return response.data;
 }
 
-async function insertALineItem({ headers, dealId, formData }) {
+async function updateLineItem({ headers, lineItemHsId, formData }) {
+  console.log(`updateLineItem: ${lineItemHsId}`);
+  const url = `https://api.hubapi.com/crm/v3/objects/line_items/${lineItemHsId}`;
+  const data = {
+    properties: {
+      id: lineItemHsId,
+      annual_revenue_amount: formData.annualRevenueAmount || '',
+      country: formData.country || '',
+      gp_fee__: formData.gpFeeDollarAmount || '',
+      gp_fee_percent: formData.gpFeePercent || '',
+      hs_product_id: formData.product || '',
+      initial_year_amount_override: formData.initialYearAmountOverride || '',
+      initial_year_amount: formData.initialYearAmount || '',
+      initial_year_gp_fee: formData.initialYearGpFee || '',
+      initial_year_gp_override: formData.initialYearGpOverride || '',
+      markup_percent: formData.markupPercent || '',
+      name: formData.name || '',
+      quantity: 1,
+    },
+  };
+  const response = await axios.patch(url, data, { headers });
+  return response.data;
+}
+
+async function insertLineItem({ headers, dealId, formData }) {
+  console.log(`insertLineItem: ${dealId}`);
   const url = `https://api.hubapi.com/crm/v3/objects/line_items/`;
 
   const data = {
@@ -96,8 +114,6 @@ async function insertALineItem({ headers, dealId, formData }) {
       hs_product_id: formData.product || '',
       quantity: 1,
       country: formData.country || '',
-      // hs_sku: formData.hsSku || '',
-      // currency: formData.currency || 'USD',
     },
   };
 

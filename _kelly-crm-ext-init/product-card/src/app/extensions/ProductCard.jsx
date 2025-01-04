@@ -3,8 +3,6 @@ import { Flex } from '@hubspot/ui-extensions';
 import { Button } from '@hubspot/ui-extensions';
 import { Tile } from '@hubspot/ui-extensions';
 import { Box } from '@hubspot/ui-extensions';
-import { Input } from '@hubspot/ui-extensions';
-import { Select } from '@hubspot/ui-extensions';
 import { Text } from '@hubspot/ui-extensions';
 import { Form } from '@hubspot/ui-extensions';
 import { LoadingSpinner } from '@hubspot/ui-extensions';
@@ -13,40 +11,27 @@ import { hubspot } from '@hubspot/ui-extensions';
 
 import { useState } from 'react';
 import { useEffect } from 'react';
-import { useMemo } from 'react';
 import React from 'react';
 
 import { RevenueAndCalculatedFields } from './components/RevenueAndCalculatedFields';
 import { SelectionGroup } from './components/SelectionGroup';
 
-// [x] Rolling up the line item total to the deal amount
-// [ ] Ensure that the currency symbol on the line items match the deal
-// [x] Remove the extra headers on the collapsed line items
-// [ ] Ensure that the filters (business units and service category) are working correctly
-// [x] Do we have the fields in the right order with the right naming conventions?
-
-// import { Products } from './components/Products';
-// import { BusinessUnits } from './components/BusinessUnits';
-// import { MarketCategory } from './components/MarketCategory';
-// import { CalculatedFields } from './components/old/CalculatedFields';
-// import { ProductForm } from './components/ProductForm';
-// import { LineItem } from './components/old/LineItem';
-// import { ReadOnlyInput } from './components/old/ReadOnlyInput';
-// import { ReadOnlyInputMoney } from './components/old/ReadOnlyInputMoney';
-// import { CalculatedField } from './components/CalculatedField';
+// [x] Edit the deal property the "First Year Amount" to be "Initial Year Amount"
+// [x] Edit the deal property "First Year GP/Fee" to be "Initial Year GP Fee"
+// [ ] The deal property GP / Fee % should be a calculated field defined as the deal amount / GP Fee $
+// [ ] The deal property GP / Fee $ should be a calculated property defined as the sum of the GP Fee amount on each individual line item
+// [ ] The deal property "Initial Year Amount" should be a calculated field defined as the sum of the "Initial Year Amount Override" field on each individual line item, or if that value is blank, the sum of the "Initial Year Amount" field on each individual line item.
+// [ ] The deal property Initial Year GP/Fee  should be a calculated field defined as the sum of the "Initial Year GP Override" field on each individual line item, or if that value is blank, the sum of the "Initial Year GP Fee" field on each individual line item.
+// [ ] A line item's country property should default to the country associated with the country property of the company associated with the deal.  When edited, this field would not revert back
+// [ ] Ensure that we are consistent across fields containing money values to use two (hundredth) decimal places
+// [ ] Ensure that we are consistent across fields containing percentages to use two (hundredth) decimal places
+// [ ] Update the padding on the collapsed line items with a focus of maximizing visibility to the product name
+// [ ] Default to users business unit
 
 // direction	'row' (default) | 'column'
 // justify	'start' (default) | 'center' | 'end' | 'around' | 'between'
 // align	'start' | 'center' | 'end' | 'baseline' | 'stretch' (default)
 // alignSelf	'start' | 'center' | 'end' | 'baseline' | 'stretch'
-
-// TODO:
-// - make calculated fields calculate
-// - pull in the signed date of the contract for calculated fields
-// - form starts hidden, show when line item or 'add line item' is selected
-// - add drawers/rows for each exisinting line item at the top of the card, append a row with 'Add Line Item'
-// - make the 'Save' button create a new line item
-// - figure out how to refresh the page/data
 
 // Define the extension to be run within the Hubspot CRM
 hubspot.extend(({ runServerlessFunction, context, actions }) => (
@@ -56,16 +41,19 @@ hubspot.extend(({ runServerlessFunction, context, actions }) => (
 const ProductCard = ({ runFunction, context, actions }) => {
   // const refreshObjectProperties = actions.refreshObjectProperties;
   const reloadPage = actions.reloadPage;
+  const showAlert = actions.addAlert;
 
   const [loading, setLoading] = useState(true);
   const [lineItems, setLineItems] = useState([]);
   const [allProducts, setAllProducts] = useState(null);
   const [allBusinessUnits, setAllBusinessUnits] = useState(null);
   const [allServiceCategories, setAllServiceCategories] = useState(null);
-  const [selectedBusinessUnit, setSelectedBusinessUnit] = useState('');
+  const [selectedBusinessUnit, setSelectedBusinessUnit] = useState('All Units');
   const [selectedServiceCategory, setSelectedServiceCategory] = useState('');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [dealStartDate, setDealStartDate] = useState(new Date().toISOString());
+  const [dealCurrencyCode, setDealCurrencyCode] = useState('');
+  const [dealCompanyCountry, setDealCompanyCountry] = useState('');
 
   const [inputs, setInputs] = useState({
     annualRevenueAmount: 0,
@@ -80,6 +68,7 @@ const ProductCard = ({ runFunction, context, actions }) => {
     serviceCategory: '',
     product: '',
     country: '',
+    hsObjectId: '',
   });
 
   const handleInputChange = (name, value) => {
@@ -122,9 +111,18 @@ const ProductCard = ({ runFunction, context, actions }) => {
       parameters: { formData: updatedFormData },
       propertiesToSend: ['hs_object_id'],
     }).then((wrappedResponse) => {
-      const { newLineItem } = wrappedResponse.response;
-      console.log(`newLineItem: ${JSON.stringify(newLineItem, null, 2)}`);
-      reloadPage();
+      const { newLineItem, error } = wrappedResponse.response;
+      if (error) {
+        console.log('error:', error);
+        showAlert({
+          title: 'Error: Line Item Not Saved',
+          message: error,
+          type: 'danger',
+        });
+      } else {
+        console.log('newLineItem:', newLineItem);
+        reloadPage();
+      }
     });
   };
   useEffect(() => {
@@ -136,13 +134,23 @@ const ProductCard = ({ runFunction, context, actions }) => {
       try {
         const wrappedResponse = await getData();
         const response = wrappedResponse.response;
-        // console.log(`response: ${JSON.stringify(response, null, 2)}`);
+        console.log('response:', response);
 
         setLineItems(response.lineItems);
-        console.log(`response.lineItems: ${JSON.stringify(response.lineItems, null, 2)}`);
-        setDealStartDate(response.dealStartDate);
+        setDealStartDate(response.dealProps.start_date__c);
+        console.log('dealStartDate:', dealStartDate);
+
+        const currencyCode = response.dealProps.deal_currency_code;
+        console.log('currencyCode:', currencyCode);
+        setDealCurrencyCode(currencyCode);
+        console.log('dealCurrencyCode:', dealCurrencyCode);
+
+        const dealCompanyCountry = response.dealCompanyCountry;
+        console.log('dealCompanyCountry:', dealCompanyCountry);
+        setDealCompanyCountry(dealCompanyCountry);
+        console.log('dealCompanyCountry:', dealCompanyCountry);
+
         setAllProducts(response.allProducts);
-        // console.log(`response.allProducts: ${JSON.stringify(response.allProducts, null, 2)}`);
         setAllBusinessUnits(response.allBusinessUnits);
         setAllServiceCategories(response.allServiceCategories);
       } catch (error) {
@@ -154,6 +162,10 @@ const ProductCard = ({ runFunction, context, actions }) => {
 
     fetchData();
   }, []);
+
+  useEffect(() => {
+    console.log('dealCurrencyCode updated:', dealCurrencyCode);
+  }, [dealCurrencyCode]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -177,6 +189,7 @@ const ProductCard = ({ runFunction, context, actions }) => {
         selectedServiceCategory={selectedServiceCategory}
         selectedProduct={selectedProduct}
         dealStartDate={dealStartDate}
+        dealCompanyCountry={dealCompanyCountry}
       />
     </Flex>
   );
@@ -200,9 +213,15 @@ const Drawers = ({
   selectedServiceCategory,
   selectedProduct,
   dealStartDate,
+  dealCompanyCountry,
 }) => {
   const [openIndex, setOpenIndex] = useState(null);
   const [selectedLineItem, setSelectedLineItem] = useState(null);
+
+  // debug
+  useEffect(() => {
+    console.log('lineItems:', lineItems);
+  }, [lineItems]);
 
   const toggleOpen = (index) => {
     console.log(`Toggling index: ${index}`);
@@ -236,6 +255,7 @@ const Drawers = ({
             setSelectedProduct={setSelectedProduct}
             selectedProduct={selectedProduct}
             dealStartDate={dealStartDate}
+            dealCompanyCountry={dealCompanyCountry}
           />
         ))}
         <Flex direction="column" gap={'flush'}>
@@ -251,7 +271,7 @@ const Drawers = ({
                 allProducts={allProducts}
                 onInputChange={handleInputChange}
                 inputs={prepopulatedInputs}
-                onFormSubmit={handleFormSubmit}
+                handleFormSubmit={handleFormSubmit}
                 setSelectedBusinessUnit={setSelectedBusinessUnit}
                 setSelectedServiceCategory={setSelectedServiceCategory}
                 setSelectedProduct={setSelectedProduct}
@@ -259,6 +279,7 @@ const Drawers = ({
                 selectedServiceCategory={prepopulatedInputs.serviceCategory}
                 selectedProduct={prepopulatedInputs.product}
                 dealStartDate={dealStartDate}
+                dealCompanyCountry={dealCompanyCountry}
               />
             </Flex>
           )}
@@ -282,21 +303,22 @@ const ButtonGroup = () => (
   </Box>
 );
 
-function doOnSubmit(e, inputs, onFormSubmit) {
-  console.log('inputs in onSubmit', JSON.stringify(inputs, null, 2));
-  const formData = {
-    ...inputs,
-  };
-  onFormSubmit(formData);
-}
+function doOnSubmit(inputs, handleFormSubmit) {
+  console.log('inputs in doOnSubmit', JSON.stringify(inputs, null, 2));
 
+  // Ensure hsObjectId and all inputs are included
+  const formData = { ...inputs };
+
+  // Call parent submit handler
+  handleFormSubmit(formData);
+}
 const ProductForm = ({
   allBusinessUnits,
   allServiceCategories,
   allProducts,
   onInputChange,
   inputs,
-  onFormSubmit,
+  handleFormSubmit,
   setSelectedBusinessUnit,
   setSelectedServiceCategory,
   setSelectedProduct,
@@ -304,41 +326,41 @@ const ProductForm = ({
   selectedServiceCategory,
   selectedProduct,
   dealStartDate,
+  dealCompanyCountry,
 }) => {
-  const [localInputs, setLocalInputs] = useState(inputs);
+  const [localInputs, setLocalInputs] = useState({
+    ...inputs,
+    country: inputs.country || dealCompanyCountry,
+  });
 
   useEffect(() => {
-    setLocalInputs(inputs); // Sync external updates
-  }, [inputs]);
+    setLocalInputs((prev) => ({
+      ...prev,
+      ...inputs,
+      country: inputs.country || dealCompanyCountry,
+    }));
+  }, [inputs, dealCompanyCountry]);
 
-  const handleInputChange = (name, value) => {
+  const updateLocalInputs = (name, value) => {
     setLocalInputs((prev) => ({
       ...prev,
       [name]: value,
     }));
-    onInputChange(name, value); // Pass to parent
-  };
-
-  const handleCalculatedFieldsChange = (calculatedFields) => {
-    Object.entries(calculatedFields).forEach(([key, value]) => {
-      handleInputChange(key, value);
-    });
   };
 
   return (
-    <Form onSubmit={(e) => doOnSubmit(e, localInputs, onFormSubmit)}>
+    <Form onSubmit={(e) => doOnSubmit(localInputs, handleFormSubmit)}>
       <Flex direction="column" gap={'flush'} flex={'auto'}>
-        {/* <Flex direction="row">
-          <Text variant="heading">Select a Product to begin</Text>
-        </Flex> */}
-
         <Flex direction="column" gap={FLEX_GAP}>
           <SelectionGroup
             allBusinessUnits={allBusinessUnits}
             allServiceCategories={allServiceCategories}
             allProducts={allProducts}
-            onInputChange={onInputChange}
-            onFormSubmit={onFormSubmit}
+            onInputChange={(name, value) => {
+              onInputChange(name, value);
+              updateLocalInputs(name, value);
+            }}
+            handleFormSubmit={handleFormSubmit}
             setSelectedBusinessUnit={setSelectedBusinessUnit}
             setSelectedServiceCategory={setSelectedServiceCategory}
             setSelectedProduct={setSelectedProduct}
@@ -350,14 +372,18 @@ const ProductForm = ({
           <Divider distance="small" />
           <RevenueAndCalculatedFields
             inputs={inputs}
-            onInputChange={onInputChange}
-            onFormSubmit={onFormSubmit}
+            onInputChange={(name, value) => {
+              onInputChange(name, value);
+              updateLocalInputs(name, value);
+            }}
+            handleFormSubmit={handleFormSubmit}
             dealStartDate={dealStartDate}
+            dealCompanyCountry={dealCompanyCountry}
           />
           <Divider distance="small" />
         </Flex>
         <Flex align="end" flex={'2'} direction="row" justify="center">
-          <Box flex={'1'}>
+          <Box>
             <ButtonGroup />
           </Box>
         </Flex>
@@ -380,12 +406,26 @@ const LineItemWithForm = ({
   setSelectedServiceCategory,
   setSelectedProduct,
   dealStartDate,
+  dealCompanyCountry,
 }) => {
-  const [prepopulatedInputs, setPrepopulatedInputs] = useState({});
+  const [prepopulatedInputs, setPrepopulatedInputs] = useState({
+    annualRevenueAmount: item.annual_revenue_amount || 0,
+    gpFeePercent: item.gp_fee_percent || 0,
+    gpFeeDollarAmount: item.gp_fee__ || 0,
+    initialYearAmountOverride: item.initial_year_amount_override || 0,
+    initialYearGpOverride: item.initial_year_gp_override || 0,
+    markupPercent: item.markup_percent || 0,
+    businessUnit: item.business_unit || '',
+    serviceCategory: item.service_category || '',
+    product: item.product_id || '',
+    country: item.country || dealCompanyCountry,
+    hsObjectId: item.hs_object_id || '',
+  });
 
   useEffect(() => {
     if (isOpen && item) {
       setPrepopulatedInputs({
+        ...item, // Use the full item for prepopulation
         annualRevenueAmount: item.annual_revenue_amount || 0,
         gpFeePercent: item.gp_fee_percent || 0,
         gpFeeDollarAmount: item.gp_fee__ || 0,
@@ -395,7 +435,8 @@ const LineItemWithForm = ({
         businessUnit: item.business_unit || '',
         serviceCategory: item.service_category || '',
         product: item.product_id || '',
-        country: item.country || '',
+        country: item.country || dealCompanyCountry,
+        hsObjectId: item.hs_object_id || '',
       });
 
       // Sync dropdown state
@@ -403,7 +444,7 @@ const LineItemWithForm = ({
       setSelectedServiceCategory(item.service_category || '');
       setSelectedProduct(item.product_id || '');
     }
-  }, [isOpen, item]);
+  }, [isOpen, item, dealCompanyCountry]);
 
   return (
     <Flex direction="row" gap={'flush'} align="center">
@@ -420,7 +461,7 @@ const LineItemWithForm = ({
               allProducts={allProducts}
               onInputChange={handleInputChange}
               inputs={prepopulatedInputs}
-              onFormSubmit={handleFormSubmit}
+              handleFormSubmit={handleFormSubmit}
               setSelectedBusinessUnit={setSelectedBusinessUnit}
               setSelectedServiceCategory={setSelectedServiceCategory}
               setSelectedProduct={setSelectedProduct}
@@ -428,6 +469,7 @@ const LineItemWithForm = ({
               selectedServiceCategory={prepopulatedInputs.serviceCategory}
               selectedProduct={prepopulatedInputs.product}
               dealStartDate={dealStartDate}
+              dealCompanyCountry={dealCompanyCountry}
             />
           </>
         )}
@@ -457,11 +499,50 @@ const LineItemRowContents = ({ dataPoint, item }) => (
 );
 
 const LineItem = ({ item }) => (
-  <Tile onClick={() => console.log('clicked')} flush={false} compact={true}>
-    <Flex direction="row" gap="xs" wrap="nowrap">
-      {lineItemDataPoints.map((dataPoint) => (
-        <LineItemRowContents dataPoint={dataPoint} item={item} />
-      ))}
+  <Tile flush={false} compact={true}>
+    <Flex direction="row" gap="xs" wrap="nowrap" justify="start">
+      <Box flex={10}>
+        <Flex direction="column" gap="xs" align="left" justify="end" wrap="wrap">
+          <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
+            Product Name:
+          </Text>
+          <Text format={{ textAlign: 'right' }} truncate={true} variant="microcopy">
+            {item.name || 'N/A'}
+          </Text>
+        </Flex>
+      </Box>
+      <Box>
+        <Flex direction="column" gap="xs" align="left" justify="end" wrap="wrap">
+          <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
+            Annual Revenue Amount:
+          </Text>
+          <Text format={{ textAlign: 'right' }} truncate={true} variant="microcopy">
+            {item.annual_revenue_amount || 'N/A'}
+          </Text>
+        </Flex>
+      </Box>
+
+      <Box>
+        <Flex direction="column" gap="xs" align="left" justify="end" wrap="wrap">
+          <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
+            GP Fee Percent:
+          </Text>
+          <Text format={{ textAlign: 'right' }} truncate={true} variant="microcopy">
+            {item.gp_fee_percent || 'N/A'}
+          </Text>
+        </Flex>
+      </Box>
+
+      <Box>
+        <Flex direction="column" gap="xs" align="left" justify="end" wrap="wrap">
+          <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
+            GP Fee Amount:
+          </Text>
+          <Text format={{ textAlign: 'right' }} truncate={true} variant="microcopy">
+            {item.gp_fee__ || 'N/A'}
+          </Text>
+        </Flex>
+      </Box>
     </Flex>
   </Tile>
 );
