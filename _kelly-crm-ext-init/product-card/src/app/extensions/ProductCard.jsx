@@ -15,6 +15,7 @@ import React from 'react';
 
 import { RevenueAndCalculatedFields } from './components/RevenueAndCalculatedFields';
 import { SelectionGroup } from './components/SelectionGroup';
+import { formatCurrency, formatPercent } from './helpers/formatHelper';
 
 // [x] Edit the deal property the "First Year Amount" to be "Initial Year Amount"
 // [x] Edit the deal property "First Year GP/Fee" to be "Initial Year GP Fee"
@@ -22,11 +23,13 @@ import { SelectionGroup } from './components/SelectionGroup';
 // [ ] The deal property GP / Fee $ should be a calculated property defined as the sum of the GP Fee amount on each individual line item
 // [ ] The deal property "Initial Year Amount" should be a calculated field defined as the sum of the "Initial Year Amount Override" field on each individual line item, or if that value is blank, the sum of the "Initial Year Amount" field on each individual line item.
 // [ ] The deal property Initial Year GP/Fee  should be a calculated field defined as the sum of the "Initial Year GP Override" field on each individual line item, or if that value is blank, the sum of the "Initial Year GP Fee" field on each individual line item.
-// [ ] A line item's country property should default to the country associated with the country property of the company associated with the deal.  When edited, this field would not revert back
+// [x] A line item's country property should default to the country associated with the country property of the company associated with the deal.  When edited, this field would not revert back
 // [ ] Ensure that we are consistent across fields containing money values to use two (hundredth) decimal places
 // [ ] Ensure that we are consistent across fields containing percentages to use two (hundredth) decimal places
 // [ ] Update the padding on the collapsed line items with a focus of maximizing visibility to the product name
 // [ ] Default to users business unit
+
+// how do we validate deal start date?
 
 // direction	'row' (default) | 'column'
 // justify	'start' (default) | 'center' | 'end' | 'around' | 'between'
@@ -133,26 +136,26 @@ const ProductCard = ({ runFunction, context, actions }) => {
     const fetchData = async () => {
       try {
         const wrappedResponse = await getData();
-        const response = wrappedResponse.response;
+        const response = wrappedResponse?.response;
         console.log('response:', response);
 
-        setLineItems(response.lineItems);
-        setDealStartDate(response.dealProps.start_date__c);
+        setLineItems(response?.lineItems || []);
+        setDealStartDate(response?.dealProps?.start_date__c || '');
         console.log('dealStartDate:', dealStartDate);
 
-        const currencyCode = response.dealProps.deal_currency_code;
+        const currencyCode = response?.dealProps?.deal_currency_code || '';
         console.log('currencyCode:', currencyCode);
         setDealCurrencyCode(currencyCode);
-        console.log('dealCurrencyCode:', dealCurrencyCode);
+        console.log('set dealCurrencyCode:', dealCurrencyCode);
 
-        const dealCompanyCountry = response.dealCompanyCountry;
+        const dealCompanyCountry = response?.dealCompanyCountry || '';
         console.log('dealCompanyCountry:', dealCompanyCountry);
         setDealCompanyCountry(dealCompanyCountry);
         console.log('dealCompanyCountry:', dealCompanyCountry);
 
-        setAllProducts(response.allProducts);
-        setAllBusinessUnits(response.allBusinessUnits);
-        setAllServiceCategories(response.allServiceCategories);
+        setAllProducts(response?.allProducts || []);
+        setAllBusinessUnits(response?.allBusinessUnits || []);
+        setAllServiceCategories(response?.allServiceCategories || []);
       } catch (error) {
         console.error('Error fetching data from serverless function:', error);
       } finally {
@@ -163,9 +166,9 @@ const ProductCard = ({ runFunction, context, actions }) => {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    console.log('dealCurrencyCode updated:', dealCurrencyCode);
-  }, [dealCurrencyCode]);
+  // useEffect(() => {
+  //   console.log('dealCurrencyCode updated:', dealCurrencyCode);
+  // }, [dealCurrencyCode]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -190,6 +193,7 @@ const ProductCard = ({ runFunction, context, actions }) => {
         selectedProduct={selectedProduct}
         dealStartDate={dealStartDate}
         dealCompanyCountry={dealCompanyCountry}
+        dealCurrencyCode={dealCurrencyCode}
       />
     </Flex>
   );
@@ -214,14 +218,15 @@ const Drawers = ({
   selectedProduct,
   dealStartDate,
   dealCompanyCountry,
+  dealCurrencyCode,
 }) => {
   const [openIndex, setOpenIndex] = useState(null);
   const [selectedLineItem, setSelectedLineItem] = useState(null);
 
-  // debug
-  useEffect(() => {
-    console.log('lineItems:', lineItems);
-  }, [lineItems]);
+  // // debug
+  // useEffect(() => {
+  //   console.log('lineItems:', lineItems);
+  // }, [lineItems]);
 
   const toggleOpen = (index) => {
     console.log(`Toggling index: ${index}`);
@@ -256,6 +261,7 @@ const Drawers = ({
             selectedProduct={selectedProduct}
             dealStartDate={dealStartDate}
             dealCompanyCountry={dealCompanyCountry}
+            dealCurrencyCode={dealCurrencyCode}
           />
         ))}
         <Flex direction="column" gap={'flush'}>
@@ -280,6 +286,7 @@ const Drawers = ({
                 selectedProduct={prepopulatedInputs.product}
                 dealStartDate={dealStartDate}
                 dealCompanyCountry={dealCompanyCountry}
+                dealCurrencyCode={dealCurrencyCode}
               />
             </Flex>
           )}
@@ -327,6 +334,7 @@ const ProductForm = ({
   selectedProduct,
   dealStartDate,
   dealCompanyCountry,
+  dealCurrencyCode,
 }) => {
   const [localInputs, setLocalInputs] = useState({
     ...inputs,
@@ -379,6 +387,7 @@ const ProductForm = ({
             handleFormSubmit={handleFormSubmit}
             dealStartDate={dealStartDate}
             dealCompanyCountry={dealCompanyCountry}
+            dealCurrencyCode={dealCurrencyCode}
           />
           <Divider distance="small" />
         </Flex>
@@ -407,6 +416,7 @@ const LineItemWithForm = ({
   setSelectedProduct,
   dealStartDate,
   dealCompanyCountry,
+  dealCurrencyCode,
 }) => {
   const [prepopulatedInputs, setPrepopulatedInputs] = useState({
     annualRevenueAmount: item.annual_revenue_amount || 0,
@@ -450,7 +460,7 @@ const LineItemWithForm = ({
     <Flex direction="row" gap={'flush'} align="center">
       <Flex direction="column" gap={'flush'} flex="1">
         <Link onClick={() => toggleOpen(index)}>
-          <LineItem key={index} item={item} />
+          <LineItem key={index} item={item} dealCurrencyCode={dealCurrencyCode} />
         </Link>
         {isOpen && (
           <>
@@ -470,6 +480,7 @@ const LineItemWithForm = ({
               selectedProduct={prepopulatedInputs.product}
               dealStartDate={dealStartDate}
               dealCompanyCountry={dealCompanyCountry}
+              dealCurrencyCode={dealCurrencyCode}
             />
           </>
         )}
@@ -480,69 +491,38 @@ const LineItemWithForm = ({
 
 // Product Name | Annual Revenue Amount | GP Fee Percent | GP Fee Amount
 
-const lineItemDataPoints = [
-  { label: 'Product Name', hs_internal_name: 'name' },
-  { label: 'Annual Revenue Amount', hs_internal_name: 'annual_revenue_amount' },
-  { label: 'GP Fee Percent', hs_internal_name: 'gp_fee_percent' },
-  { label: 'GP Fee Amount', hs_internal_name: 'gp_fee__' },
-];
+const LineItem = ({ item, dealCurrencyCode }) => {
+  const lineItemDataPoints = [
+    { label: 'Product Name', key: 'name', format: (value) => value || 'N/A' },
+    {
+      label: 'Annual Revenue Amount',
+      key: 'annual_revenue_amount',
+      format: (value) => (value ? formatCurrency(value, dealCurrencyCode) : 'N/A'),
+    },
+    { label: 'GP Fee Percent', key: 'gp_fee_percent', format: (value) => (value ? formatPercent(value) : 'N/A') },
+    {
+      label: 'GP Fee Amount',
+      key: 'gp_fee__',
+      format: (value) => (value ? formatCurrency(value, dealCurrencyCode) : 'N/A'),
+    },
+  ];
 
-const LineItemRowContents = ({ dataPoint, item }) => (
-  <Flex direction="column" gap="xs" align="left" justify="end" wrap="wrap">
-    <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
-      {dataPoint.label}:
-    </Text>
-    <Text format={{ textAlign: 'right' }} truncate={true} variant="microcopy">
-      {item[dataPoint.hs_internal_name] || 'N/A'}
-    </Text>
-  </Flex>
-);
-
-const LineItem = ({ item }) => (
-  <Tile flush={false} compact={true}>
-    <Flex direction="row" gap="xs" wrap="nowrap" justify="start">
-      <Box flex={10}>
-        <Flex direction="column" gap="xs" align="left" justify="end" wrap="wrap">
-          <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
-            Product Name:
-          </Text>
-          <Text format={{ textAlign: 'right' }} truncate={true} variant="microcopy">
-            {item.name || 'N/A'}
-          </Text>
-        </Flex>
-      </Box>
-      <Box>
-        <Flex direction="column" gap="xs" align="left" justify="end" wrap="wrap">
-          <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
-            Annual Revenue Amount:
-          </Text>
-          <Text format={{ textAlign: 'right' }} truncate={true} variant="microcopy">
-            {item.annual_revenue_amount || 'N/A'}
-          </Text>
-        </Flex>
-      </Box>
-
-      <Box>
-        <Flex direction="column" gap="xs" align="left" justify="end" wrap="wrap">
-          <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
-            GP Fee Percent:
-          </Text>
-          <Text format={{ textAlign: 'right' }} truncate={true} variant="microcopy">
-            {item.gp_fee_percent || 'N/A'}
-          </Text>
-        </Flex>
-      </Box>
-
-      <Box>
-        <Flex direction="column" gap="xs" align="left" justify="end" wrap="wrap">
-          <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
-            GP Fee Amount:
-          </Text>
-          <Text format={{ textAlign: 'right' }} truncate={true} variant="microcopy">
-            {item.gp_fee__ || 'N/A'}
-          </Text>
-        </Flex>
-      </Box>
-    </Flex>
-  </Tile>
-);
+  return (
+    <Tile flush={false} compact={true}>
+      <Flex direction="row" gap="xs" wrap="nowrap" justify="start">
+        {lineItemDataPoints.map((dataPoint) => (
+          <Box key={dataPoint.key} flex={dataPoint.key === 'name' ? 10 : 4}>
+            <Flex direction="column" gap="xs" align="start" justify="end" wrap="wrap">
+              <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
+                {dataPoint.label}:
+              </Text>
+              <Text align="end" truncate={true} variant="microcopy" format={{ alignText: 'right' }}>
+                {dataPoint.format(item[dataPoint.key])}
+              </Text>
+            </Flex>
+          </Box>
+        ))}
+      </Flex>
+    </Tile>
+  );
+};

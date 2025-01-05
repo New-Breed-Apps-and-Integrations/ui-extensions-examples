@@ -1,7 +1,7 @@
 import { Flex } from '@hubspot/ui-extensions';
 import { Box } from '@hubspot/ui-extensions';
 import { Select } from '@hubspot/ui-extensions';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import React from 'react';
 
 const FLEX_GAP = 'small';
@@ -47,17 +47,34 @@ export const SelectionGroup = ({
         selectedProduct={selectedProduct}
         selectedBusinessUnit={selectedBusinessUnit}
         selectedServiceCategory={selectedServiceCategory}
+        setSelectedBusinessUnit={setSelectedBusinessUnit}
+        setSelectedServiceCategory={setSelectedServiceCategory}
       />
     </Box>
   </Flex>
 );
 
-const Products = ({ allProducts, onInputChange, setSelectedProduct, selectedProduct, selectedBusinessUnit, selectedServiceCategory }) => {
+const Products = ({
+  allProducts,
+  onInputChange,
+  setSelectedProduct,
+  setSelectedBusinessUnit,
+  setSelectedServiceCategory,
+  selectedProduct,
+  selectedBusinessUnit,
+  selectedServiceCategory,
+}) => {
   const filteredProducts = useMemo(() => {
-    return allProducts
+    const products = allProducts
       .filter((product) => {
-        const matchesBusinessUnit = selectedBusinessUnit ? product.properties.business_unit === selectedBusinessUnit : true;
-        const matchesServiceCategory = selectedServiceCategory ? product.properties.service_category === selectedServiceCategory : true;
+        const matchesBusinessUnit =
+          !selectedBusinessUnit || selectedBusinessUnit === 'All Units'
+            ? true
+            : product.properties.business_unit === selectedBusinessUnit;
+
+        const matchesServiceCategory = selectedServiceCategory
+          ? product.properties.service_category === selectedServiceCategory
+          : true;
 
         return matchesBusinessUnit && matchesServiceCategory;
       })
@@ -65,9 +82,26 @@ const Products = ({ allProducts, onInputChange, setSelectedProduct, selectedProd
         value: product.id,
         label: product.properties.name,
       }));
+
+    return products;
   }, [allProducts, selectedBusinessUnit, selectedServiceCategory]);
 
   const selectCurrentProduct = (value) => {
+    // Find the selected product details
+    const selected = allProducts.find((product) => product.id === value);
+
+    if (selected) {
+      // Update business unit and service category based on the selected product
+      const { business_unit, service_category } = selected.properties;
+
+      setSelectedBusinessUnit(business_unit);
+      onInputChange('businessUnit', business_unit);
+
+      setSelectedServiceCategory(service_category);
+      onInputChange('serviceCategory', service_category);
+    }
+
+    // Update the selected product
     setSelectedProduct(value);
     onInputChange('product', value);
   };
@@ -80,7 +114,7 @@ const Products = ({ allProducts, onInputChange, setSelectedProduct, selectedProd
       required
       onChange={selectCurrentProduct}
       options={filteredProducts}
-      value={selectedProduct || ''} // Reflect selected product
+      value={selectedProduct || ''}
     />
   );
 };
@@ -106,12 +140,17 @@ const BusinessUnits = ({ allBusinessUnits, onInputChange, setSelectedBusinessUni
       required
       onChange={selectCurrentBusinessUnit}
       options={businessUnits}
-      value={selectedBusinessUnit || ''}
+      value={selectedBusinessUnit || 'All Units'}
     />
   );
 };
 
-const ServiceCategory = ({ allServiceCategories, onInputChange, setSelectedServiceCategory, selectedServiceCategory }) => {
+const ServiceCategory = ({
+  allServiceCategories,
+  onInputChange,
+  setSelectedServiceCategory,
+  selectedServiceCategory,
+}) => {
   const serviceCategories = useMemo(() => {
     return allServiceCategories.map((serviceCategory) => ({
       value: serviceCategory.value,

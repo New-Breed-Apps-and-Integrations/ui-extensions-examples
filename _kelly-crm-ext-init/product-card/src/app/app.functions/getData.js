@@ -26,6 +26,7 @@ exports.main = async (context = {}) => {
 
     return { allProducts, allBusinessUnits, allServiceCategories, lineItems, dealProps, dealCompanyCountry };
   } catch (error) {
+    debugger;
     console.error(error.message);
     console.log(JSON.stringify(error?.response?.data, null, 2));
     return { error: error.message };
