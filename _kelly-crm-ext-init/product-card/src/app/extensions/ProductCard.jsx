@@ -17,6 +17,8 @@ import { RevenueAndCalculatedFields } from './components/RevenueAndCalculatedFie
 import { SelectionGroup } from './components/SelectionGroup';
 import { formatCurrency, formatPercent } from './helpers/formatHelper';
 
+const SHOW_DELETE_BUTTON = false; // Flag to control button visibility
+
 // [x] Edit the deal property the "First Year Amount" to be "Initial Year Amount"
 // [x] Edit the deal property "First Year GP/Fee" to be "Initial Year GP Fee"
 // [ ] The deal property GP / Fee $ should be a calculated property defined as the sum of the GP Fee amount on each individual line item
@@ -33,6 +35,7 @@ import { formatCurrency, formatPercent } from './helpers/formatHelper';
 // do we validate any of the fields?
 // why doesn't formatStyle work for inputs
 // need to clear form data when canceling a new line item
+// FIXME: updating a line item removes the names from the other line items
 
 // direction	'row' (default) | 'column'
 // justify	'start' (default) | 'center' | 'end' | 'around' | 'between'
@@ -213,6 +216,11 @@ const ProductCard = ({ runFunction, context, actions }) => {
         dealCompanyCountry={dealCompanyCountry}
         dealCurrencyCode={dealCurrencyCode}
       />
+      {SHOW_DELETE_BUTTON && (
+        <Button variant="destructive" onClick={clearLineItems}>
+          Delete All Line Items
+        </Button>
+      )}
     </Flex>
   );
 };
@@ -240,11 +248,6 @@ const Drawers = ({
 }) => {
   const [openIndex, setOpenIndex] = useState(null);
   const [selectedLineItem, setSelectedLineItem] = useState(null);
-
-  // // debug
-  // useEffect(() => {
-  //   console.log('lineItems:', lineItems);
-  // }, [lineItems]);
 
   const toggleOpen = (index) => {
     // console.log(`Toggling index: ${index}`);
@@ -312,9 +315,11 @@ const Drawers = ({
         {/* <Button>**debug** current line_item count: {lineItems.length} **debug**</Button> */}
         <Divider distance="large" />
 
-        <Button variant="destructive" onClick={clearLineItems}>
-          Delete All Line Items
-        </Button>
+        {SHOW_DELETE_BUTTON && (
+          <Button variant="destructive" onClick={clearLineItems}>
+            Delete All Line Items
+          </Button>
+        )}
       </Flex>
     </>
   );
@@ -534,10 +539,10 @@ const LineItem = ({ item, dealCurrencyCode }) => {
 
   return (
     <Tile flush={false} compact={true}>
-      <Flex direction="row" gap="xs" wrap="nowrap" justify="start">
+      <Flex direction="row" gap="xs" wrap="nowrap" align="end" justify="start">
         {lineItemDataPoints.map((dataPoint) => (
           <Box key={dataPoint.key} flex={dataPoint.key === 'name' ? 10 : 4}>
-            <Flex direction="column" gap="xs" align="end" justify="end" wrap="wrap">
+            <Flex direction="column" gap="xs" wrap="wrap">
               <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
                 {dataPoint.label}:
               </Text>
