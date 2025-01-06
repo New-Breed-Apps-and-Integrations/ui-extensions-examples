@@ -9,7 +9,7 @@ exports.main = async (context = {}) => {
   };
 
   try {
-    console.log(`\nFRESH REQUEST!\n`);
+    console.log(`\n >>> FRESH REQUEST! <<< `);
     // console.log(`context: ${JSON.stringify(context, null, 2)}`);
 
     const { hs_object_id } = context.propertiesToSend;
@@ -23,15 +23,44 @@ exports.main = async (context = {}) => {
     const dealProps = await getDealProps(headers, hs_object_id);
     const dealCompanyCountry = await getDealsFirstCompanyCountry(headers, hs_object_id);
     // console.log(`lineItemsSample: ${JSON.stringify(lineItems[0], null, 2)}`);
+    const usersFirstBusinessUnit = await getusersFirstBusinessUnit(headers, userId);
 
-    return { allProducts, allBusinessUnits, allServiceCategories, lineItems, dealProps, dealCompanyCountry };
+    return {
+      allProducts,
+      allBusinessUnits,
+      allServiceCategories,
+      lineItems,
+      dealProps,
+      dealCompanyCountry,
+      usersFirstBusinessUnit,
+    };
   } catch (error) {
-    debugger;
     console.error(error.message);
     console.log(JSON.stringify(error?.response?.data, null, 2));
     return { error: error.message };
   }
 };
+
+async function getusersFirstBusinessUnit(headers, userId) {
+  /* 
+    {
+    "results": [
+      {
+        "logoMetadata": {
+          "logoAltText": "logo sample text",
+          "resizedUrl": "sillystring",
+          "logoUrl": "examplelogourl.com"
+        },
+        "name": "sample business unit name",
+        "id": "101"
+      }
+    ]
+    }
+  */
+  const url = `https://api.hubapi.com/business-units/v3/business-units/user/${userId}`;
+  const response = await axios.get(url, { headers });
+  return 'KellyOCG';
+}
 
 async function getDealProps(headers, dealId) {
   const url = `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=start_date__c,deal_currency_code,deal_currency`;

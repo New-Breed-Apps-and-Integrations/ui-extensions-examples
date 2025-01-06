@@ -1,7 +1,7 @@
 import { Flex } from '@hubspot/ui-extensions';
 import { Box } from '@hubspot/ui-extensions';
 import { Select } from '@hubspot/ui-extensions';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import React from 'react';
 
 const FLEX_GAP = 'small';
@@ -11,13 +11,13 @@ export const SelectionGroup = ({
   allServiceCategories,
   allProducts,
   onInputChange,
-  setSelectedBusinessUnit,
-  setSelectedServiceCategory,
-  setSelectedProduct,
   selectedBusinessUnit,
   selectedServiceCategory,
   selectedProduct,
-  dealStartDate,
+  usersFirstBusinessUnit,
+  setSelectedBusinessUnit,
+  setSelectedProduct,
+  setSelectedServiceCategory,
 }) => (
   <Flex direction="column" gap={FLEX_GAP}>
     <Flex direction="row" gap={FLEX_GAP} justify="between" align="stretch" alignSelf="stretch" wrap="nowrap">
@@ -25,16 +25,17 @@ export const SelectionGroup = ({
         <BusinessUnits
           allBusinessUnits={allBusinessUnits}
           onInputChange={onInputChange}
-          setSelectedBusinessUnit={setSelectedBusinessUnit}
           selectedBusinessUnit={selectedBusinessUnit}
+          usersFirstBusinessUnit={usersFirstBusinessUnit}
+          setSelectedBusinessUnit={setSelectedBusinessUnit}
         />
       </Box>
       <Box flex={'auto'}>
         <ServiceCategory
           allServiceCategories={allServiceCategories}
           onInputChange={onInputChange}
-          setSelectedServiceCategory={setSelectedServiceCategory}
           selectedServiceCategory={selectedServiceCategory}
+          setSelectedServiceCategory={setSelectedServiceCategory}
         />
       </Box>
     </Flex>
@@ -44,11 +45,11 @@ export const SelectionGroup = ({
         allProducts={allProducts}
         onInputChange={onInputChange}
         setSelectedProduct={setSelectedProduct}
+        setSelectedBusinessUnit={setSelectedBusinessUnit}
+        setSelectedServiceCategory={setSelectedServiceCategory}
         selectedProduct={selectedProduct}
         selectedBusinessUnit={selectedBusinessUnit}
         selectedServiceCategory={selectedServiceCategory}
-        setSelectedBusinessUnit={setSelectedBusinessUnit}
-        setSelectedServiceCategory={setSelectedServiceCategory}
       />
     </Box>
   </Flex>
@@ -119,7 +120,7 @@ const Products = ({
   );
 };
 
-const BusinessUnits = ({ allBusinessUnits, onInputChange, setSelectedBusinessUnit, selectedBusinessUnit }) => {
+const BusinessUnits = ({ allBusinessUnits, onInputChange, selectedBusinessUnit, setSelectedBusinessUnit }) => {
   const businessUnits = useMemo(() => {
     return allBusinessUnits.map((businessUnit) => ({
       value: businessUnit.name,
@@ -132,6 +133,14 @@ const BusinessUnits = ({ allBusinessUnits, onInputChange, setSelectedBusinessUni
     onInputChange('businessUnit', value);
   };
 
+  // default using setSelectedBusinessUnit
+  useEffect(() => {
+    console.log('selectedBusinessUnit:', selectedBusinessUnit);
+    if (!selectedBusinessUnit) {
+      setSelectedBusinessUnit(selectedBusinessUnit);
+    }
+  }, [selectedBusinessUnit]);
+
   return (
     <Select
       label="Business Units (required)"
@@ -140,7 +149,7 @@ const BusinessUnits = ({ allBusinessUnits, onInputChange, setSelectedBusinessUni
       required
       onChange={selectCurrentBusinessUnit}
       options={businessUnits}
-      value={selectedBusinessUnit || 'All Units'}
+      value={selectedBusinessUnit}
     />
   );
 };

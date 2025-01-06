@@ -19,8 +19,8 @@ import { formatCurrency, formatPercent } from './helpers/formatHelper';
 
 // [x] Edit the deal property the "First Year Amount" to be "Initial Year Amount"
 // [x] Edit the deal property "First Year GP/Fee" to be "Initial Year GP Fee"
-// [ ] The deal property GP / Fee % should be a calculated field defined as the deal amount / GP Fee $
 // [ ] The deal property GP / Fee $ should be a calculated property defined as the sum of the GP Fee amount on each individual line item
+// [ ] The deal property GP / Fee % should be a calculated field defined as the deal amount / GP Fee $
 // [ ] The deal property "Initial Year Amount" should be a calculated field defined as the sum of the "Initial Year Amount Override" field on each individual line item, or if that value is blank, the sum of the "Initial Year Amount" field on each individual line item.
 // [ ] The deal property Initial Year GP/Fee  should be a calculated field defined as the sum of the "Initial Year GP Override" field on each individual line item, or if that value is blank, the sum of the "Initial Year GP Fee" field on each individual line item.
 // [x] A line item's country property should default to the country associated with the country property of the company associated with the deal.  When edited, this field would not revert back
@@ -30,6 +30,9 @@ import { formatCurrency, formatPercent } from './helpers/formatHelper';
 // [ ] Default to users business unit
 
 // how do we validate deal start date?
+// do we validate any of the fields?
+// why doesn't formatStyle work for inputs
+// need to clear form data when canceling a new line item
 
 // direction	'row' (default) | 'column'
 // justify	'start' (default) | 'center' | 'end' | 'around' | 'between'
@@ -57,6 +60,7 @@ const ProductCard = ({ runFunction, context, actions }) => {
   const [dealStartDate, setDealStartDate] = useState(new Date().toISOString());
   const [dealCurrencyCode, setDealCurrencyCode] = useState('');
   const [dealCompanyCountry, setDealCompanyCountry] = useState('');
+  const [usersFirstBusinessUnit, setUsersFirstBusinessUnit] = useState('');
 
   const [inputs, setInputs] = useState({
     annualRevenueAmount: 0,
@@ -91,6 +95,8 @@ const ProductCard = ({ runFunction, context, actions }) => {
   };
 
   const getData = () => {
+    console.log('getData called context:', context);
+
     return runFunction({
       name: 'getData',
       propertiesToSend: ['hs_object_id'],
@@ -108,7 +114,15 @@ const ProductCard = ({ runFunction, context, actions }) => {
       product: selectedProduct,
     };
 
-    console.log(`updatedFormData: ${JSON.stringify(updatedFormData, null, 2)}`);
+    setLineItems((prevLineItems) =>
+      prevLineItems.map(
+        (item) =>
+          item.hsObjectId === formData.hsObjectId // Match the specific line item
+            ? { ...item, ...formData } // Update the specific line item
+            : item // Keep the others unchanged
+      )
+    );
+
     runFunction({
       name: 'upsertLineItem',
       parameters: { formData: updatedFormData },
@@ -133,6 +147,16 @@ const ProductCard = ({ runFunction, context, actions }) => {
   }, [inputs]);
 
   useEffect(() => {
+    // Trigger an update to the form when the user's business unit is fetched
+    if (usersFirstBusinessUnit) {
+      setInputs((prevInputs) => ({
+        ...prevInputs,
+        businessUnit: usersFirstBusinessUnit,
+      }));
+    }
+  }, [usersFirstBusinessUnit]); // Watch for changes in `usersFirstBusinessUnit`
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const wrappedResponse = await getData();
@@ -141,17 +165,15 @@ const ProductCard = ({ runFunction, context, actions }) => {
 
         setLineItems(response?.lineItems || []);
         setDealStartDate(response?.dealProps?.start_date__c || '');
-        console.log('dealStartDate:', dealStartDate);
 
         const currencyCode = response?.dealProps?.deal_currency_code || '';
-        console.log('currencyCode:', currencyCode);
         setDealCurrencyCode(currencyCode);
-        console.log('set dealCurrencyCode:', dealCurrencyCode);
+
+        const usersFirstBusinessUnit = response?.usersFirstBusinessUnit || '';
+        setUsersFirstBusinessUnit(usersFirstBusinessUnit);
 
         const dealCompanyCountry = response?.dealCompanyCountry || '';
-        console.log('dealCompanyCountry:', dealCompanyCountry);
         setDealCompanyCountry(dealCompanyCountry);
-        console.log('dealCompanyCountry:', dealCompanyCountry);
 
         setAllProducts(response?.allProducts || []);
         setAllBusinessUnits(response?.allBusinessUnits || []);
@@ -165,10 +187,6 @@ const ProductCard = ({ runFunction, context, actions }) => {
 
     fetchData();
   }, []);
-
-  // useEffect(() => {
-  //   console.log('dealCurrencyCode updated:', dealCurrencyCode);
-  // }, [dealCurrencyCode]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -229,7 +247,7 @@ const Drawers = ({
   // }, [lineItems]);
 
   const toggleOpen = (index) => {
-    console.log(`Toggling index: ${index}`);
+    // console.log(`Toggling index: ${index}`);
     setOpenIndex((prevIndex) => (prevIndex === index ? null : index));
     setSelectedLineItem(index !== null ? lineItems[index] : null);
   };
@@ -319,6 +337,7 @@ function doOnSubmit(inputs, handleFormSubmit) {
   // Call parent submit handler
   handleFormSubmit(formData);
 }
+
 const ProductForm = ({
   allBusinessUnits,
   allServiceCategories,
@@ -339,15 +358,25 @@ const ProductForm = ({
   const [localInputs, setLocalInputs] = useState({
     ...inputs,
     country: inputs.country || dealCompanyCountry,
+    businessUnit: inputs.businessUnit || selectedBusinessUnit,
+    serviceCategory: inputs.serviceCategory || selectedServiceCategory,
+    product: inputs.product || selectedProduct,
   });
+
+  useEffect(() => {
+    console.log('ProductForm localInputs updated:', localInputs);
+  }, [localInputs]);
 
   useEffect(() => {
     setLocalInputs((prev) => ({
       ...prev,
       ...inputs,
       country: inputs.country || dealCompanyCountry,
+      businessUnit: inputs.businessUnit || selectedBusinessUnit,
+      serviceCategory: inputs.serviceCategory || selectedServiceCategory,
+      product: inputs.product || selectedProduct,
     }));
-  }, [inputs, dealCompanyCountry]);
+  }, [inputs, dealCompanyCountry, selectedBusinessUnit, selectedServiceCategory, selectedProduct]);
 
   const updateLocalInputs = (name, value) => {
     setLocalInputs((prev) => ({
@@ -368,23 +397,20 @@ const ProductForm = ({
               onInputChange(name, value);
               updateLocalInputs(name, value);
             }}
-            handleFormSubmit={handleFormSubmit}
             setSelectedBusinessUnit={setSelectedBusinessUnit}
             setSelectedServiceCategory={setSelectedServiceCategory}
             setSelectedProduct={setSelectedProduct}
-            selectedBusinessUnit={inputs.businessUnit || selectedBusinessUnit}
-            selectedServiceCategory={inputs.serviceCategory || selectedServiceCategory}
-            selectedProduct={inputs.product || selectedProduct}
-            dealStartDate={dealStartDate}
+            selectedBusinessUnit={localInputs.businessUnit || ''}
+            selectedServiceCategory={localInputs.serviceCategory || ''}
+            selectedProduct={localInputs.product || ''}
           />
           <Divider distance="small" />
           <RevenueAndCalculatedFields
-            inputs={inputs}
+            inputs={localInputs}
             onInputChange={(name, value) => {
               onInputChange(name, value);
               updateLocalInputs(name, value);
             }}
-            handleFormSubmit={handleFormSubmit}
             dealStartDate={dealStartDate}
             dealCompanyCountry={dealCompanyCountry}
             dealCurrencyCode={dealCurrencyCode}
@@ -435,7 +461,6 @@ const LineItemWithForm = ({
   useEffect(() => {
     if (isOpen && item) {
       setPrepopulatedInputs({
-        ...item, // Use the full item for prepopulation
         annualRevenueAmount: item.annual_revenue_amount || 0,
         gpFeePercent: item.gp_fee_percent || 0,
         gpFeeDollarAmount: item.gp_fee__ || 0,
@@ -466,11 +491,11 @@ const LineItemWithForm = ({
           <>
             <Divider distance="small" />
             <ProductForm
+              inputs={prepopulatedInputs}
               allBusinessUnits={allBusinessUnits}
               allServiceCategories={allServiceCategories}
               allProducts={allProducts}
               onInputChange={handleInputChange}
-              inputs={prepopulatedInputs}
               handleFormSubmit={handleFormSubmit}
               setSelectedBusinessUnit={setSelectedBusinessUnit}
               setSelectedServiceCategory={setSelectedServiceCategory}
@@ -512,11 +537,11 @@ const LineItem = ({ item, dealCurrencyCode }) => {
       <Flex direction="row" gap="xs" wrap="nowrap" justify="start">
         {lineItemDataPoints.map((dataPoint) => (
           <Box key={dataPoint.key} flex={dataPoint.key === 'name' ? 10 : 4}>
-            <Flex direction="column" gap="xs" align="start" justify="end" wrap="wrap">
+            <Flex direction="column" gap="xs" align="end" justify="end" wrap="wrap">
               <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
                 {dataPoint.label}:
               </Text>
-              <Text align="end" truncate={true} variant="microcopy" format={{ alignText: 'right' }}>
+              <Text truncate={true} variant="microcopy">
                 {dataPoint.format(item[dataPoint.key])}
               </Text>
             </Flex>

@@ -9,12 +9,9 @@ exports.main = async (context = {}) => {
   };
 
   try {
-    console.log('\nFRESH Line Item REQUEST!\n');
-    console.log(`context: ${JSON.stringify(context, null, 2)}`);
-
     const { hs_object_id: dealId } = context.propertiesToSend;
     const { formData } = context.parameters;
-    console.log(`formData: ${JSON.stringify(formData, null, 2)}`);
+    // console.log(`formData: ${JSON.stringify(formData, null, 2)}`);
 
     const lineItemHsId = formData.hsObjectId;
     const newLineItem = lineItemHsId
@@ -35,22 +32,29 @@ exports.main = async (context = {}) => {
 
 async function updateDealProperties({ headers, dealId }) {
   const lineItems = await getAllLineItems(headers, dealId);
-  const totalAmount = lineItems.reduce((sum, item) => Number(sum) + Number(item.annual_revenue_amount), 0);
-  const totalGpFee = lineItems.reduce((sum, item) => Number(sum) + Number(item.gp_fee__), 0);
-  const dealInitialYearAmount = lineItems.reduce(
+
+  const totalAmountRaw = lineItems.reduce((sum, item) => Number(sum) + Number(item.annual_revenue_amount), 0);
+  const totalGpFeeRaw = lineItems.reduce((sum, item) => Number(sum) + Number(item.gp_fee__), 0);
+  const dealInitialYearAmountRaw = lineItems.reduce(
     (sum, item) => Number(sum) + Number(item.initial_year_amount_override || item.initial_year_amount),
     0
   );
-  const dealInitialYearGpFee = lineItems.reduce(
+  const dealInitialYearGpFeeRaw = lineItems.reduce(
     (sum, item) => Number(sum) + Number(item.initial_year_gp_override || item.initial_year_gp_fee),
     0
   );
+
+  const totalAmount = formatToTwoDecimals(totalAmountRaw);
+  const totalGpFee = formatToTwoDecimals(totalGpFeeRaw);
+  const dealInitialYearAmount = formatToTwoDecimals(dealInitialYearAmountRaw);
+  const dealInitialYearGpFee = formatToTwoDecimals(dealInitialYearGpFeeRaw);
+
   const url = `https://api.hubapi.com/crm/v3/objects/deals/${dealId}`;
   const data = {
     properties: {
       amount: totalAmount,
       gp_fee__c: totalGpFee,
-      gp___fee__: totalGpFee / totalAmount,
+      gp___fee__: formatToTwoDecimals(totalGpFee / totalAmount),
       first_year_amount: dealInitialYearAmount,
       first_year_gp_fee: dealInitialYearGpFee,
     },
@@ -59,8 +63,12 @@ async function updateDealProperties({ headers, dealId }) {
   return response.data;
 }
 
+function formatToTwoDecimals(value) {
+  let output = Number(value).toFixed(2);
+  return output;
+}
+
 async function updateLineItem({ headers, lineItemHsId, formData }) {
-  console.log(`updateLineItem: ${lineItemHsId}`);
   const url = `https://api.hubapi.com/crm/v3/objects/line_items/${lineItemHsId}`;
   const data = {
     properties: {
@@ -84,7 +92,6 @@ async function updateLineItem({ headers, lineItemHsId, formData }) {
 }
 
 async function insertLineItem({ headers, dealId, formData }) {
-  console.log(`insertLineItem: ${dealId}`);
   const url = `https://api.hubapi.com/crm/v3/objects/line_items/`;
 
   const data = {
@@ -118,6 +125,5 @@ async function insertLineItem({ headers, dealId, formData }) {
   };
 
   const response = await axios.post(url, data, { headers });
-  console.log(`response: ${JSON.stringify(response.data, null, 2)}`);
   return response.data;
 }

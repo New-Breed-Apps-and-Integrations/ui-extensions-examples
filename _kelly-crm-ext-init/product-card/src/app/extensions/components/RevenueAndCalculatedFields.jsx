@@ -35,13 +35,15 @@ export const RevenueAndCalculatedFields = ({
   }, [localInputs.annualRevenueAmount, localInputs.gpFeePercent, dealStartDate]);
 
   const handleInputChange = (name, value) => {
-    let formattedValue = value;
+    console.log(`in handleInputChange, name: ${name}, value: ${value}`);
+    console.log(`typeof value: ${typeof value}`);
+    let formattedValue = typeof value === 'number' ? value.toFixed(2) : value;
 
     if (name === 'gpFeePercent' || name === 'markupPercent') {
       // Remove any non-numeric characters except for the decimal point
-      formattedValue = value.replace(/[^\d.]/g, '');
+      let unalphadValue = formattedValue.replace(/[^\d.]/g, '');
       // Append the percent symbol
-      formattedValue = `${formattedValue}%`;
+      formattedValue = `${unalphadValue}%`;
     }
 
     setLocalInputs((prev) => ({
@@ -131,6 +133,7 @@ export const RevenueAndCalculatedFields = ({
           onBlur={(e) => handleInputChange('markupPercent', e)}
           formatStyle="percent"
           precision={2}
+          suffix="%"
         />
       </Flex>
 
