@@ -87,6 +87,8 @@ const Products = ({
     if (selected) {
       onInputChange('productName', selected.properties.name);
       onInputChange('productId', selected.id);
+      onInputChange('businessUnit', selected.properties.business_unit);
+      onInputChange('serviceCategory', selected.properties.service_category);
     }
   };
 

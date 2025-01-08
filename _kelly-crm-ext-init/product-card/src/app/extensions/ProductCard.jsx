@@ -133,11 +133,26 @@ const ProductCard = ({ runFunction, context, actions }) => {
       productId: selectedProductId,
     };
 
-    setLineItems((prevLineItems) =>
-      prevLineItems.map((item) => (item.hsObjectId === formData.hsObjectId ? { ...item, ...updatedFormData } : item))
-    );
+    console.log('updatedFormData right before submit:', updatedFormData);
 
-    console.log('Form submitted successfully:', updatedFormData);
+    // Submit the form data
+    runFunction({
+      name: 'upsertLineItem',
+      propertiesToSend: ['hs_object_id'],
+      parameters: { formData: updatedFormData },
+    })
+      .then((response) => {
+        console.log('response:', response);
+        if (response.status === 'SUCCESS') {
+          // console.log('Form submitted successfully:', updatedFormData);
+          reloadPage();
+        } else {
+          console.error('Form submission failed:', response.error);
+        }
+      })
+      .catch((error) => {
+        console.error('Error during form submission:', error);
+      });
   };
 
   useEffect(() => {
@@ -301,6 +316,10 @@ const Drawers = ({
                 dealCurrencyCode={dealCurrencyCode}
               />
             )}
+          </Flex>
+        </Tile>
+        <Tile flush={false} compact={true}>
+          <Flex direction="column" gap={'flush'}>
             <Button variant="destructive" onClick={clearLineItems}>
               Delete All Line Items
             </Button>
@@ -345,11 +364,11 @@ const ProductForm = ({
     country: inputs.country || dealCompanyCountry,
     businessUnit: inputs.businessUnit || selectedBusinessUnit,
     serviceCategory: inputs.serviceCategory || selectedServiceCategory,
-    product: inputs.product || selectedProduct,
+    productName: inputs.productName || selectedProduct,
   });
 
   useEffect(() => {
-    console.log('ProductForm localInputs updated:', localInputs);
+    console.log('ProductForm localInputs updated:', JSON.stringify(localInputs, null, 2));
   }, [localInputs]);
 
   useEffect(() => {
@@ -359,7 +378,7 @@ const ProductForm = ({
       country: inputs.country || dealCompanyCountry,
       businessUnit: inputs.businessUnit || selectedBusinessUnit,
       serviceCategory: inputs.serviceCategory || selectedServiceCategory,
-      product: inputs.product || selectedProduct,
+      productName: inputs.productName || selectedProduct,
     }));
   }, [inputs, dealCompanyCountry, selectedBusinessUnit, selectedServiceCategory, selectedProduct]);
 
@@ -386,7 +405,8 @@ const ProductForm = ({
           setSelectedProduct={setSelectedProduct}
           selectedBusinessUnit={localInputs.businessUnit || ''}
           selectedServiceCategory={localInputs.serviceCategory || ''}
-          selectedProduct={localInputs.product || ''}
+          selectedProductId={localInputs.product || ''}
+          selectedProductName={localInputs.productName}
         />
         <Divider distance="xs" />
         <RevenueAndCalculatedFields
@@ -443,6 +463,7 @@ const LineItemWithForm = ({
 
   useEffect(() => {
     if (isOpen && item) {
+      console.log(`use effect lineItemWithForm item: ${JSON.stringify(item, null, 2)}`);
       setPrepopulatedInputs({
         annualRevenueAmount: item.annual_revenue_amount || 0,
         gpFeePercent: item.gp_fee_percent || 0,
@@ -458,9 +479,12 @@ const LineItemWithForm = ({
       });
 
       // Sync dropdown state
-      setSelectedBusinessUnit(item.business_unit || '');
-      setSelectedServiceCategory(item.service_category || '');
-      setSelectedProduct(item.product_id || '');
+      // console.log(`item.business_unit: ${item.business_unit}`);
+      // console.log(`item.service_category: ${item.service_category}`);
+      // console.log(`item.product_id: ${item.product_id}`);
+      // setSelectedBusinessUnit(item.business_unit || '');
+      // setSelectedServiceCategory(item.service_category || '');
+      // setSelectedProduct(item.product_id || '');
     }
   }, [isOpen, item, dealCompanyCountry]);
 
