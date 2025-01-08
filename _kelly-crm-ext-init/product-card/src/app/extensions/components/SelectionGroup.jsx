@@ -75,14 +75,6 @@ const Products = ({ allProducts, onInputChange, selectedProduct, selectedBusines
   }, [allProducts, selectedBusinessUnit, selectedServiceCategory]);
 
   const selectCurrentProduct = (value) => {
-    const selected = allProducts.find((product) => product.id === value);
-
-    if (selected) {
-      const { business_unit, service_category } = selected.properties;
-      onInputChange('businessUnit', business_unit);
-      onInputChange('serviceCategory', service_category);
-    }
-
     onInputChange('product', value);
   };
 

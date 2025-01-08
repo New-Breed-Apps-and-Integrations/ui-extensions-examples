@@ -37,6 +37,7 @@ import { formatCurrency, formatPercent } from './helpers/formatHelper';
 // need to clear form data when canceling a new line item
 // FIXME: updating a line item removes the names from the other line items
 // FIXME: add "All" to the business unit dropdown
+// fixyou: negative numbers
 // FIXME: negative initial year amount should be fixed
 // QUESTION: should we remove the delte all line items button?
 // QUESTION: rm delete all?
@@ -90,6 +91,10 @@ const ProductCard = ({ runFunction, context, actions }) => {
       ...prevInputs,
       [name]: value || 0,
     }));
+
+    if (name === 'product') {
+      setSelectedProduct(value);
+    }
   };
 
   const clearLineItems = () => {
@@ -113,42 +118,34 @@ const ProductCard = ({ runFunction, context, actions }) => {
     });
   };
 
-  const handleFormSubmit = (formData) => {
+  const handleFormSubmit = () => {
+    if (!selectedProduct) {
+      console.error('Product selection is required.');
+      return;
+    }
+
+    const formData = { ...inputs };
+
+    const selectedProductDetails = allProducts.find((product) => product.id === selectedProduct);
+
+    if (!selectedProductDetails) {
+      console.error('Selected product details not found.');
+      return;
+    }
+
     const updatedFormData = {
       ...formData,
       businessUnit: selectedBusinessUnit,
       serviceCategory: selectedServiceCategory,
       product: selectedProduct,
+      productName: selectedProductDetails.properties.name || '',
     };
 
     setLineItems((prevLineItems) =>
-      prevLineItems.map(
-        (item) =>
-          item.hsObjectId === formData.hsObjectId // Match the specific line item
-            ? { ...item, ...formData } // Update the specific line item
-            : item // Keep the others unchanged
-      )
+      prevLineItems.map((item) => (item.hsObjectId === formData.hsObjectId ? { ...item, ...updatedFormData } : item))
     );
 
-    runFunction({
-      name: 'upsertLineItem',
-      parameters: { formData: updatedFormData },
-      propertiesToSend: ['hs_object_id'],
-    }).then((wrappedResponse) => {
-      const { newLineItem, error } = wrappedResponse.response;
-      if (error) {
-        console.log('error:', error);
-        showAlert({
-          title: 'Error: Line Item Not Saved',
-          message: error,
-          type: 'danger',
-        });
-      } else {
-        // Success!
-        console.log('newLineItem:', newLineItem);
-        reloadPage();
-      }
-    });
+    console.log('Form submitted successfully:', updatedFormData);
   };
   useEffect(() => {
     console.log('Inputs updated:', inputs);
@@ -172,6 +169,11 @@ const ProductCard = ({ runFunction, context, actions }) => {
         console.log('response:', response);
 
         setLineItems(response?.lineItems || []);
+
+        response?.lineItems?.forEach((lineItem) => {
+          console.log(`lineItem Name: ${lineItem.name}`);
+        });
+
         setDealStartDate(response?.dealProps?.start_date__c || '');
 
         const currencyCode = response?.dealProps?.deal_currency_code || '';
@@ -376,7 +378,7 @@ const ProductForm = ({
   };
 
   return (
-    <Form onSubmit={(e) => doOnSubmit(localInputs, handleFormSubmit)}>
+    <Form onSubmit={(e) => handleFormSubmit(localInputs)}>
       <Flex direction="column" gap={FLEX_GAP}>
         <SelectionGroup
           allBusinessUnits={allBusinessUnits}
