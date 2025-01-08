@@ -17,7 +17,7 @@ import { RevenueAndCalculatedFields } from './components/RevenueAndCalculatedFie
 import { SelectionGroup } from './components/SelectionGroup';
 import { formatCurrency, formatPercent } from './helpers/formatHelper';
 
-const SHOW_DELETE_BUTTON = false; // Flag to control button visibility
+// const SHOW_DELETE_BUTTON = true; // Flag to control button visibility
 
 // [x] Edit the deal property the "First Year Amount" to be "Initial Year Amount"
 // [x] Edit the deal property "First Year GP/Fee" to be "Initial Year GP Fee"
@@ -31,11 +31,15 @@ const SHOW_DELETE_BUTTON = false; // Flag to control button visibility
 // [ ] Update the padding on the collapsed line items with a focus of maximizing visibility to the product name
 // [ ] Default to users business unit
 
-// how do we validate deal start date?
+// how do we validate deal start date
 // do we validate any of the fields?
 // why doesn't formatStyle work for inputs
 // need to clear form data when canceling a new line item
 // FIXME: updating a line item removes the names from the other line items
+// FIXME: add "All" to the business unit dropdown
+// FIXME: negative initial year amount should be fixed
+// QUESTION: should we remove the delte all line items button?
+// QUESTION: rm delete all?
 
 // direction	'row' (default) | 'column'
 // justify	'start' (default) | 'center' | 'end' | 'around' | 'between'
@@ -140,6 +144,7 @@ const ProductCard = ({ runFunction, context, actions }) => {
           type: 'danger',
         });
       } else {
+        // Success!
         console.log('newLineItem:', newLineItem);
         reloadPage();
       }
@@ -216,11 +221,6 @@ const ProductCard = ({ runFunction, context, actions }) => {
         dealCompanyCountry={dealCompanyCountry}
         dealCurrencyCode={dealCurrencyCode}
       />
-      {SHOW_DELETE_BUTTON && (
-        <Button variant="destructive" onClick={clearLineItems}>
-          Delete All Line Items
-        </Button>
-      )}
     </Flex>
   );
 };
@@ -250,7 +250,6 @@ const Drawers = ({
   const [selectedLineItem, setSelectedLineItem] = useState(null);
 
   const toggleOpen = (index) => {
-    // console.log(`Toggling index: ${index}`);
     setOpenIndex((prevIndex) => (prevIndex === index ? null : index));
     setSelectedLineItem(index !== null ? lineItems[index] : null);
   };
@@ -285,13 +284,10 @@ const Drawers = ({
             dealCurrencyCode={dealCurrencyCode}
           />
         ))}
-        <Flex direction="column" gap={'flush'}>
-          <Button onClick={() => toggleOpen('add')}>
-            {openIndex === 'add' ? 'Cancel New Line Item' : 'Add a New Line Item'}
-          </Button>
-          {openIndex === 'add' && (
-            <Flex direction="column" gap={'flush'}>
-              <Divider distance="small" />
+        <Tile flush={false} compact={true}>
+          <Flex direction="column" gap={'flush'}>
+            <Button onClick={() => toggleOpen('add')}>{openIndex === 'add' ? 'Cancel' : 'Create New Line Item'}</Button>
+            {openIndex === 'add' && (
               <ProductForm
                 allBusinessUnits={allBusinessUnits}
                 allServiceCategories={allServiceCategories}
@@ -309,29 +305,18 @@ const Drawers = ({
                 dealCompanyCountry={dealCompanyCountry}
                 dealCurrencyCode={dealCurrencyCode}
               />
-            </Flex>
-          )}
-        </Flex>
-        {/* <Button>**debug** current line_item count: {lineItems.length} **debug**</Button> */}
-        <Divider distance="large" />
-
-        {SHOW_DELETE_BUTTON && (
-          <Button variant="destructive" onClick={clearLineItems}>
-            Delete All Line Items
-          </Button>
-        )}
+            )}
+            <Button variant="destructive" onClick={clearLineItems}>
+              Delete All Line Items
+            </Button>
+          </Flex>
+        </Tile>
       </Flex>
     </>
   );
 };
 
 const FLEX_GAP = 'small'; // 'flush' (default) | 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large'
-
-const ButtonGroup = () => (
-  <Box flex={'auto'} alignSelf="center" padding="20px">
-    <Button type="submit">Save</Button>
-  </Box>
-);
 
 function doOnSubmit(inputs, handleFormSubmit) {
   console.log('inputs in doOnSubmit', JSON.stringify(inputs, null, 2));
@@ -392,40 +377,38 @@ const ProductForm = ({
 
   return (
     <Form onSubmit={(e) => doOnSubmit(localInputs, handleFormSubmit)}>
-      <Flex direction="column" gap={'flush'} flex={'auto'}>
-        <Flex direction="column" gap={FLEX_GAP}>
-          <SelectionGroup
-            allBusinessUnits={allBusinessUnits}
-            allServiceCategories={allServiceCategories}
-            allProducts={allProducts}
-            onInputChange={(name, value) => {
-              onInputChange(name, value);
-              updateLocalInputs(name, value);
-            }}
-            setSelectedBusinessUnit={setSelectedBusinessUnit}
-            setSelectedServiceCategory={setSelectedServiceCategory}
-            setSelectedProduct={setSelectedProduct}
-            selectedBusinessUnit={localInputs.businessUnit || ''}
-            selectedServiceCategory={localInputs.serviceCategory || ''}
-            selectedProduct={localInputs.product || ''}
-          />
-          <Divider distance="small" />
-          <RevenueAndCalculatedFields
-            inputs={localInputs}
-            onInputChange={(name, value) => {
-              onInputChange(name, value);
-              updateLocalInputs(name, value);
-            }}
-            dealStartDate={dealStartDate}
-            dealCompanyCountry={dealCompanyCountry}
-            dealCurrencyCode={dealCurrencyCode}
-          />
-          <Divider distance="small" />
-        </Flex>
-        <Flex align="end" flex={'2'} direction="row" justify="center">
-          <Box>
-            <ButtonGroup />
-          </Box>
+      <Flex direction="column" gap={FLEX_GAP}>
+        <SelectionGroup
+          allBusinessUnits={allBusinessUnits}
+          allServiceCategories={allServiceCategories}
+          allProducts={allProducts}
+          onInputChange={(name, value) => {
+            onInputChange(name, value);
+            updateLocalInputs(name, value);
+          }}
+          setSelectedBusinessUnit={setSelectedBusinessUnit}
+          setSelectedServiceCategory={setSelectedServiceCategory}
+          setSelectedProduct={setSelectedProduct}
+          selectedBusinessUnit={localInputs.businessUnit || ''}
+          selectedServiceCategory={localInputs.serviceCategory || ''}
+          selectedProduct={localInputs.product || ''}
+        />
+        <Divider distance="xs" />
+        <RevenueAndCalculatedFields
+          inputs={localInputs}
+          onInputChange={(name, value) => {
+            onInputChange(name, value);
+            updateLocalInputs(name, value);
+          }}
+          dealStartDate={dealStartDate}
+          dealCompanyCountry={dealCompanyCountry}
+          dealCurrencyCode={dealCurrencyCode}
+        />
+        <Divider distance="xs" />
+        <Flex direction="column" gap={'flush'}>
+          <Button variant="primary" type="submit">
+            Save
+          </Button>
         </Flex>
       </Flex>
     </Form>
@@ -487,35 +470,33 @@ const LineItemWithForm = ({
   }, [isOpen, item, dealCompanyCountry]);
 
   return (
-    <Flex direction="row" gap={'flush'} align="center">
-      <Flex direction="column" gap={'flush'} flex="1">
-        <Link onClick={() => toggleOpen(index)}>
-          <LineItem key={index} item={item} dealCurrencyCode={dealCurrencyCode} />
-        </Link>
-        {isOpen && (
-          <>
-            <Divider distance="small" />
-            <ProductForm
-              inputs={prepopulatedInputs}
-              allBusinessUnits={allBusinessUnits}
-              allServiceCategories={allServiceCategories}
-              allProducts={allProducts}
-              onInputChange={handleInputChange}
-              handleFormSubmit={handleFormSubmit}
-              setSelectedBusinessUnit={setSelectedBusinessUnit}
-              setSelectedServiceCategory={setSelectedServiceCategory}
-              setSelectedProduct={setSelectedProduct}
-              selectedBusinessUnit={prepopulatedInputs.businessUnit}
-              selectedServiceCategory={prepopulatedInputs.serviceCategory}
-              selectedProduct={prepopulatedInputs.product}
-              dealStartDate={dealStartDate}
-              dealCompanyCountry={dealCompanyCountry}
-              dealCurrencyCode={dealCurrencyCode}
-            />
-          </>
-        )}
-      </Flex>
-    </Flex>
+    <Tile flush={false} compact={true}>
+      <Link onClick={() => toggleOpen(index)}>
+        <LineItem key={index} item={item} dealCurrencyCode={dealCurrencyCode} />
+      </Link>
+      {isOpen && (
+        <>
+          <Divider distance="xs" />
+          <ProductForm
+            inputs={prepopulatedInputs}
+            allBusinessUnits={allBusinessUnits}
+            allServiceCategories={allServiceCategories}
+            allProducts={allProducts}
+            onInputChange={handleInputChange}
+            handleFormSubmit={handleFormSubmit}
+            setSelectedBusinessUnit={setSelectedBusinessUnit}
+            setSelectedServiceCategory={setSelectedServiceCategory}
+            setSelectedProduct={setSelectedProduct}
+            selectedBusinessUnit={prepopulatedInputs.businessUnit}
+            selectedServiceCategory={prepopulatedInputs.serviceCategory}
+            selectedProduct={prepopulatedInputs.product}
+            dealStartDate={dealStartDate}
+            dealCompanyCountry={dealCompanyCountry}
+            dealCurrencyCode={dealCurrencyCode}
+          />
+        </>
+      )}
+    </Tile>
   );
 };
 
@@ -538,21 +519,19 @@ const LineItem = ({ item, dealCurrencyCode }) => {
   ];
 
   return (
-    <Tile flush={false} compact={true}>
-      <Flex direction="row" gap="xs" wrap="nowrap" align="end" justify="start">
-        {lineItemDataPoints.map((dataPoint) => (
-          <Box key={dataPoint.key} flex={dataPoint.key === 'name' ? 10 : 4}>
-            <Flex direction="column" gap="xs" wrap="wrap">
-              <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
-                {dataPoint.label}:
-              </Text>
-              <Text truncate={true} variant="microcopy">
-                {dataPoint.format(item[dataPoint.key])}
-              </Text>
-            </Flex>
-          </Box>
-        ))}
-      </Flex>
-    </Tile>
+    <Flex direction="row" gap="xs" wrap="nowrap" align="end" justify="start">
+      {lineItemDataPoints.map((dataPoint) => (
+        <Box key={dataPoint.key} flex={dataPoint.key === 'name' ? 10 : 4}>
+          <Flex direction="column" gap="xs" wrap="wrap">
+            <Text variant="microcopy" format={{ fontWeight: 'bold' }}>
+              {dataPoint.label}:
+            </Text>
+            <Text truncate={true} variant="microcopy">
+              {dataPoint.format(item[dataPoint.key])}
+            </Text>
+          </Flex>
+        </Box>
+      ))}
+    </Flex>
   );
 };

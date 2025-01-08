@@ -44,9 +44,6 @@ export const SelectionGroup = ({
       <Products
         allProducts={allProducts}
         onInputChange={onInputChange}
-        setSelectedProduct={setSelectedProduct}
-        setSelectedBusinessUnit={setSelectedBusinessUnit}
-        setSelectedServiceCategory={setSelectedServiceCategory}
         selectedProduct={selectedProduct}
         selectedBusinessUnit={selectedBusinessUnit}
         selectedServiceCategory={selectedServiceCategory}
@@ -55,27 +52,19 @@ export const SelectionGroup = ({
   </Flex>
 );
 
-const Products = ({
-  allProducts,
-  onInputChange,
-  setSelectedProduct,
-  setSelectedBusinessUnit,
-  setSelectedServiceCategory,
-  selectedProduct,
-  selectedBusinessUnit,
-  selectedServiceCategory,
-}) => {
+const Products = ({ allProducts, onInputChange, selectedProduct, selectedBusinessUnit, selectedServiceCategory }) => {
   const filteredProducts = useMemo(() => {
-    const products = allProducts
+    return allProducts
       .filter((product) => {
         const matchesBusinessUnit =
-          !selectedBusinessUnit || selectedBusinessUnit === 'All Units'
+          selectedBusinessUnit === 'All Units' || !selectedBusinessUnit
             ? true
             : product.properties.business_unit === selectedBusinessUnit;
 
-        const matchesServiceCategory = selectedServiceCategory
-          ? product.properties.service_category === selectedServiceCategory
-          : true;
+        const matchesServiceCategory =
+          selectedServiceCategory === 'All' || !selectedServiceCategory
+            ? true
+            : product.properties.service_category === selectedServiceCategory;
 
         return matchesBusinessUnit && matchesServiceCategory;
       })
@@ -83,27 +72,17 @@ const Products = ({
         value: product.id,
         label: product.properties.name,
       }));
-
-    return products;
   }, [allProducts, selectedBusinessUnit, selectedServiceCategory]);
 
   const selectCurrentProduct = (value) => {
-    // Find the selected product details
     const selected = allProducts.find((product) => product.id === value);
 
     if (selected) {
-      // Update business unit and service category based on the selected product
       const { business_unit, service_category } = selected.properties;
-
-      setSelectedBusinessUnit(business_unit);
       onInputChange('businessUnit', business_unit);
-
-      setSelectedServiceCategory(service_category);
       onInputChange('serviceCategory', service_category);
     }
 
-    // Update the selected product
-    setSelectedProduct(value);
     onInputChange('product', value);
   };
 

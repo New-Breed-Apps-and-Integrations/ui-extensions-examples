@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { getAllLineItems } = require('./shared');
+
 // Entry function of this module, it creates a quote together with line items
 exports.main = async (context = {}) => {
   const ACCESS_TOKEN = process.env['PRIVATE_APP_ACCESS_TOKEN'];
@@ -11,7 +12,7 @@ exports.main = async (context = {}) => {
   try {
     const { hs_object_id: dealId } = context.propertiesToSend;
     const { formData } = context.parameters;
-    // console.log(`formData: ${JSON.stringify(formData, null, 2)}`);
+    console.log(`formData: ${JSON.stringify(formData, null, 2)}`);
 
     const lineItemHsId = formData.hsObjectId;
     const newLineItem = lineItemHsId

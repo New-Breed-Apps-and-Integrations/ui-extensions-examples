@@ -59,7 +59,7 @@ async function getusersFirstBusinessUnit(headers, userId) {
   */
   const url = `https://api.hubapi.com/business-units/v3/business-units/user/${userId}`;
   const response = await axios.get(url, { headers });
-  return 'KellyOCG';
+  return 'Kelly P&I';
 }
 
 async function getDealProps(headers, dealId) {
@@ -116,6 +116,10 @@ async function getAllServiceCategories(headers) {
 
   // const service_category;
   const serviceCategories = [
+    {
+      label: 'All',
+      value: 'All',
+    },
     {
       label: 'Staffing',
       value: 'Staffing',
