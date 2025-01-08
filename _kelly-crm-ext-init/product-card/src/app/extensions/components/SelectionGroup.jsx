@@ -44,7 +44,8 @@ export const SelectionGroup = ({
       <Products
         allProducts={allProducts}
         onInputChange={onInputChange}
-        selectedProduct={selectedProduct}
+        selectedProductName={selectedProduct}
+        selectedProductId={selectedProduct}
         selectedBusinessUnit={selectedBusinessUnit}
         selectedServiceCategory={selectedServiceCategory}
       />
@@ -52,7 +53,14 @@ export const SelectionGroup = ({
   </Flex>
 );
 
-const Products = ({ allProducts, onInputChange, selectedProduct, selectedBusinessUnit, selectedServiceCategory }) => {
+const Products = ({
+  allProducts,
+  onInputChange,
+  selectedProductName,
+  selectedProductId,
+  selectedBusinessUnit,
+  selectedServiceCategory,
+}) => {
   const filteredProducts = useMemo(() => {
     return allProducts
       .filter((product) => {
@@ -75,7 +83,11 @@ const Products = ({ allProducts, onInputChange, selectedProduct, selectedBusines
   }, [allProducts, selectedBusinessUnit, selectedServiceCategory]);
 
   const selectCurrentProduct = (value) => {
-    onInputChange('product', value);
+    const selected = allProducts.find((product) => product.id === value);
+    if (selected) {
+      onInputChange('productName', selected.properties.name);
+      onInputChange('productId', selected.id);
+    }
   };
 
   return (
@@ -86,7 +98,7 @@ const Products = ({ allProducts, onInputChange, selectedProduct, selectedBusines
       required
       onChange={selectCurrentProduct}
       options={filteredProducts}
-      value={selectedProduct || ''}
+      value={selectedProductId || ''}
     />
   );
 };

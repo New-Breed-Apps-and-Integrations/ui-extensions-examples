@@ -69,6 +69,8 @@ const ProductCard = ({ runFunction, context, actions }) => {
   const [dealCurrencyCode, setDealCurrencyCode] = useState('');
   const [dealCompanyCountry, setDealCompanyCountry] = useState('');
   const [usersFirstBusinessUnit, setUsersFirstBusinessUnit] = useState('');
+  const [selectedProductName, setSelectedProductName] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState('');
 
   const [inputs, setInputs] = useState({
     annualRevenueAmount: 0,
@@ -92,8 +94,10 @@ const ProductCard = ({ runFunction, context, actions }) => {
       [name]: value || 0,
     }));
 
-    if (name === 'product') {
-      setSelectedProduct(value);
+    if (name === 'productName') {
+      setSelectedProductName(value);
+    } else if (name === 'productId') {
+      setSelectedProductId(value);
     }
   };
 
@@ -119,26 +123,14 @@ const ProductCard = ({ runFunction, context, actions }) => {
   };
 
   const handleFormSubmit = () => {
-    if (!selectedProduct) {
-      console.error('Product selection is required.');
-      return;
-    }
-
     const formData = { ...inputs };
-
-    const selectedProductDetails = allProducts.find((product) => product.id === selectedProduct);
-
-    if (!selectedProductDetails) {
-      console.error('Selected product details not found.');
-      return;
-    }
 
     const updatedFormData = {
       ...formData,
       businessUnit: selectedBusinessUnit,
       serviceCategory: selectedServiceCategory,
-      product: selectedProduct,
-      productName: selectedProductDetails.properties.name || '',
+      productName: selectedProductName,
+      productId: selectedProductId,
     };
 
     setLineItems((prevLineItems) =>
@@ -147,6 +139,7 @@ const ProductCard = ({ runFunction, context, actions }) => {
 
     console.log('Form submitted successfully:', updatedFormData);
   };
+
   useEffect(() => {
     console.log('Inputs updated:', inputs);
   }, [inputs]);
@@ -378,7 +371,7 @@ const ProductForm = ({
   };
 
   return (
-    <Form onSubmit={(e) => handleFormSubmit(localInputs)}>
+    <Form onSubmit={(e) => doOnSubmit(localInputs, handleFormSubmit)}>
       <Flex direction="column" gap={FLEX_GAP}>
         <SelectionGroup
           allBusinessUnits={allBusinessUnits}
